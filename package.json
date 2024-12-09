@@ -12,6 +12,7 @@
   "dependencies": {
     "@nextui-org/react": "^2.6.5",
     "axios": "^1.7.9",
+    "cors": "^2.8.5",
     "express": "^4.21.2",
     "framer-motion": "^11.13.1",
     "nodemon": "^3.1.7",
