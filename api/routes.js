@@ -25,35 +25,51 @@ router.get("/user/:uuid", (req, res) => {
   } else {
     console.log(userUUID + " is a valid uuid");
 
-    db.query(query, [userUUID], (err, results) => {
+    db.query(query, userUUID, (err, results) => {
       if (err) {
         console.error("Error retrieving user:", err.message);
         res.status(500).json({ error: "Database error" });
-      } else if (results.length === 0) {
-        res.status(404).json({ message: "User not found" });
-      } else {
-        res.status(200).json(results[0]);
       }
+
+      if (results.length === 0) {
+        res
+          .status(404)
+          .json({ message: `User with uuid ${userUUID} not found` });
+      }
+      console.log(
+        `retireved user with uuid ${userUUID}.\n${JSON.stringify(
+          results[0],
+          null,
+          2
+        )}`
+      );
+      res.status(200).json(results[0]);
     });
   }
 });
 
 // creates user based on json received
 router.post("/user", (req, res) => {
-  const { username, user_details, preference_json, account_status } = req.body;
-
-  console.log(`checking if req.body contain json`);
-
-  //check if req.body is empty
-  if (Object.keys(req.body).length === 0) {
-    console.error("req.body is empty");
-    return res.status(400).json({ error: "Request body is empty" });
-  }
-
-  // generates user uuid
   const uuid = uuidv4();
   const created_timestamp = new Date();
 
+  const { username, user_details, preference_json, account_status } = req.body;
+  var valueDictonary = {
+    username: username,
+    user_details: user_details,
+    preference_json: preference_json,
+    account_status: account_status,
+  };
+  // generates user uuid
+  for (var key in valueDictonary) {
+    var value = valueDictonary[key];
+
+    if (!value || Object.keys(value).length === 0) {
+      res.status(400).json({
+        error: `${key} doesn't contain anything. Please check and try again.`,
+      });
+    }
+  }
   // set POST statement
   const query =
     "INSERT INTO users (user_uuid, username, user_details, preference_json, account_status, created_timestamp)  VALUES (?,?,?,?,?,?)";
@@ -78,7 +94,7 @@ router.post("/user", (req, res) => {
       });
     }
 
-    console.log(`Created user "${username} with uuid ${uuid}`);
+    console.log(`Created user\nusername: '${username}'\nuuid: '${uuid}'`);
     res.status(200).json({
       username: username,
       uuid: uuid,
