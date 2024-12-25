@@ -4,8 +4,21 @@ import express, { response } from "express";
 import { Router } from "express";
 import { db } from "../db-connections.js";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
+import Sqids from "sqids";
 
 const router = Router();
+// const SQID = require('sqids').default;
+const sqids = new Sqids({ minLength: 8 });
+
+function decodeSqid(sqidString) {
+  const decodedId = sqids.decode(sqidString);
+  return decodedId;
+}
+
+function encodeSqid(user_id) {
+  const encodedId = sqids.encode(user_id);
+  return encodedId;
+}
 
 //TODO create authentication method for backend
 router.get("/test", (req, res) => {
@@ -50,7 +63,6 @@ router.get("/user/:uuid", (req, res) => {
 
 // creates user based on json received
 router.post("/user", (req, res) => {
-  const uuid = uuidv4();
   const created_timestamp = new Date();
 
   const { username, user_details, preference_json, account_status } = req.body;
@@ -72,9 +84,8 @@ router.post("/user", (req, res) => {
   }
   // set POST statement
   const query =
-    "INSERT INTO users (user_uuid, username, user_details, preference_json, account_status, created_timestamp)  VALUES (?,?,?,?,?,?)";
+    "INSERT INTO users (username, user_details, preference_json, account_status, created_timestamp)  VALUES (?,?,?,?,?) RETURNING user_id";
   const values = [
-    uuid,
     username,
     JSON.stringify(user_details),
     JSON.stringify(preference_json),
@@ -94,10 +105,12 @@ router.post("/user", (req, res) => {
       });
     }
 
-    console.log(`Created user\nusername: '${username}'\nuuid: '${uuid}'`);
+    const sqid = encodeSqid([results[0].user_id]);
+
+    console.log(`Created user\nusername: '${username}'\nsqid: '${sqid}'`);
     res.status(200).json({
       username: username,
-      uuid: uuid,
+      sqid: sqid,
       created_timestamp: created_timestamp,
     });
   });
