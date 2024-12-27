@@ -54,6 +54,9 @@ transactionRouter.get("/transaction/:sqid", (req, res) => {
   });
 });
 
+//gets transaction via UUID
+transactionRouter.get("/transaction/:uuid", (req, res) => {});
+
 //creates transaction and assigns it a transaction_UUID
 transactionRouter.post("/transaction", (req, res) => {
   const transaction_uuid = uuidv4();
@@ -120,5 +123,73 @@ transactionRouter.post("/transaction", (req, res) => {
   });
 });
 
+//modifies transactions via UUID
+transactionRouter.put("/transaction/:uuid", (req, res) => {
+  const transaction_uuid = req.params.uuid;
+
+  const { transaction_name, transaction_amount, transaction_details } =
+    req.body;
+
+  // validate input values
+  const valueDictionary = {
+    transaction_name: transaction_name,
+    transaction_amount: transaction_amount,
+    transaction_details: transaction_details,
+  };
+
+  //TODO: don't check empty for optional fields
+  for (const [key, value] of Object.entries(valueDictionary)) {
+    if (
+      !value ||
+      (typeof value === "object" && Object.keys(value).length === 0)
+    ) {
+      return res.status(400).json({
+        error: `${key} doesn't contain anything. Please check and try again.`,
+      });
+    }
+  }
+
+  const updated_timestamp = new Date();
+
+  const query =
+    "UPDATE transaction SET transaction_name = ?, transaction_amount = ?, transaction_details = ?, updated_timestamp = ?  WHERE transaction_uuid = ?";
+
+  const values = [
+    transaction_name,
+    transaction_amount,
+    JSON.stringify(transaction_details),
+    updated_timestamp, //updated_timestamp
+    transaction_uuid,
+  ];
+
+  db.query(query, values, (err, results) => {
+    if (err) {
+      console.error(`Error ${err.message}`);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({
+        message: `Unable to update transaction ${transaction_uuid} due to an unexpected error. Check details and try again.`,
+      });
+    }
+
+    console.log(
+      `Updated transaction\n
+      transaction_uuid: '${transaction_uuid}'\n
+      transaction_name: '${transaction_name}\n
+      transaction_amount: '${transaction_amount}\n
+      transaction_details: '${JSON.stringify(transaction_details, null)}\n
+      updated_timestamp: '${updated_timestamp}'`
+    );
+    return res.status(200).json({
+      transaction_uuid: transaction_uuid,
+      transaction_name: transaction_name,
+      transaction_amount: transaction_amount,
+      transaction_details: transaction_details,
+      updated_timestamp: updated_timestamp,
+    });
+  });
+});
 
 export default transactionRouter;
