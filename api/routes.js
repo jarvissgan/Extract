@@ -33,30 +33,30 @@ router.get("/transaction/:sqid", (req, res) => {
   const user_id = decodeSqid(sqid);
 
   if (!user_id || user_id == undefined) {
-    res.status(400).json({
+    return res.status(400).json({
       error: `${sqid} is invalid or doesn't contain anything. Please check and try again.`,
     });
   }
   db.query(query, user_id, (err, results) => {
     if (err) {
       console.error("Error retrieving user:", err.message);
-      res.status(500).json({ error: "Database error" });
+      return res.status(500).json({ error: "Database error" });
     }
 
     if (results.length === 0) {
-      console.log(`Transactions not found. user_id: '${user_id}' `)
-      res.status(404).json({
+      console.log(`Transactions not found. user_id: '${user_id}' `);
+      return res.status(404).json({
         message: `Transactions with user_sqid '${sqid}' not found. Check and try again.`,
       });
     }
     console.log(
       `retireved transactions from user sqid ${sqid}.\n${JSON.stringify(
-        results[0],
+        results,
         null,
         2
       )}`
     );
-    res.status(200).json(results[0]);
+    return res.status(200).json(results);
   });
 });
 
@@ -67,28 +67,32 @@ router.post("/transaction", (req, res) => {
 
   const { sqid, transaction_name, transaction_amount, transaction_details } =
     req.body;
+  const user_id = decodeSqid(sqid);
 
-  var valueDictonary = {
-    user_id: decodeSqid(sqid),
+  console.log("user_id: ", user_id);
+
+  // Validate input values
+  const valueDictionary = {
+    user_id: user_id,
     transaction_name: transaction_name,
     transaction_amount: transaction_amount,
     transaction_details: transaction_details,
   };
 
-  // checks for empty values
-  for (var key in valueDictonary) {
-    var value = valueDictonary[key];
-
-    if (!value || Object.keys(value).length === 0) {
-      res.status(400).json({
+  for (const [key, value] of Object.entries(valueDictionary)) {
+    if (
+      !value ||
+      (typeof value === "object" && Object.keys(value).length === 0)
+    ) {
+      return res.status(400).json({
         error: `${key} doesn't contain anything. Please check and try again.`,
       });
     }
   }
 
-  // set POST statement
+  // Prepare SQL query and values
   const query =
-    "INSERT INTO transaction (transaction_transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp)  VALUES (?,?,?,?,?,?)";
+    "INSERT INTO transaction (transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp) VALUES (?,?,?,?,?,?)";
   const values = [
     transaction_uuid,
     user_id,
@@ -98,27 +102,23 @@ router.post("/transaction", (req, res) => {
     created_timestamp,
   ];
 
+  // Execute query
   db.query(query, values, (err, results) => {
     if (err) {
-      console.log(userNotFound);
-      if (err.code === userNotFound) {
-        console.error("Foreign key constraint failed: User does not exist");
-        return res.status(400).json({ error: "User does not exist" });
-      }
-      console.error(`Error connecting to the database. ${err.message}`);
-      res.status(500).json({ error: "Database error" });
+      console.error(`Error ${err.message}`);
+      return res.status(500).json({ error: "Database error" });
     }
 
     if (results.affectedRows === 0) {
-      res.status(404).json({
+      return res.status(404).json({
         message: `Unable to create transaction ${transaction_uuid} due to an unexpected error. Check details and try again.`,
       });
     }
 
     console.log(
-      `Created transaction\transaction_uuid: '${transaction_uuid}'\nuser_sqid: '${sqid}'\ncreated_time: '${created_timestamp}'`
+      `Created transaction\ntransaction_uuid: '${transaction_uuid}'\nuser_sqid: '${sqid}'\ncreated_time: '${created_timestamp}'`
     );
-    res.status(200).json({
+    return res.status(200).json({
       transaction_uuid: transaction_uuid,
       user_sqid: sqid,
       created_timestamp: created_timestamp,
@@ -135,11 +135,13 @@ router.get("/user/:sqid", (req, res) => {
   db.query(query, userId, (err, results) => {
     if (err) {
       console.error("Error retrieving user:", err.message);
-      res.status(500).json({ error: "Database error" });
+      return res.status(500).json({ error: "Database error" });
     }
 
     if (results.length === 0) {
-      res.status(404).json({ message: `User with sqid ${sqid} not found` });
+      return res
+        .status(404)
+        .json({ message: `User with sqid ${sqid} not found` });
     }
     console.log(
       `retireved user with sqid ${sqid}.\n${JSON.stringify(
@@ -148,7 +150,7 @@ router.get("/user/:sqid", (req, res) => {
         2
       )}`
     );
-    res.status(200).json(results[0]);
+    return res.status(200).json(results[0]);
   });
 });
 
