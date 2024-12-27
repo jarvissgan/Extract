@@ -20,8 +20,9 @@ function encodeSqid(user_id) {
   const encodedId = sqids.encode(user_id);
   return encodedId;
 }
+
 // gets transaction based on user id via sqid
-transactionRouter.get("/transaction/:sqid", (req, res) => {
+transactionRouter.get("/transaction/user/:sqid", (req, res) => {
   const query = "SELECT * FROM transaction WHERE user_id = ?";
   const sqid = req.params.sqid;
   const user_id = decodeSqid(sqid);
@@ -55,7 +56,35 @@ transactionRouter.get("/transaction/:sqid", (req, res) => {
 });
 
 //gets transaction via UUID
-transactionRouter.get("/transaction/:uuid", (req, res) => {});
+transactionRouter.get("/transaction/:uuid", (req, res) => {
+  const query = "SELECT * FROM transaction WHERE transaction_uuid = ?";
+  const transaction_uuid = req.params.uuid;
+  console.log('transaction_uuid: ', transaction_uuid);
+
+  db.query(query, transaction_uuid, (err, results) => {
+    if (err) {
+      console.error("Error retrieving transaction:", err.message);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (results.length === 0) {
+      console.log(
+        `Transaction not found. transaction_uuid: '${transaction_uuid}' `
+      );
+      return res.status(404).json({
+        message: `Transactions with transaction_uuid '${transaction_uuid}' not found. Check and try again.`,
+      });
+    }
+    console.log(
+      `retireved transaction with transaction_uuid ${transaction_uuid}.\n${JSON.stringify(
+        results[0],
+        null,
+        2
+      )}`
+    );
+    return res.status(200).json(results[0]);
+  });
+});
 
 //creates transaction and assigns it a transaction_UUID
 transactionRouter.post("/transaction", (req, res) => {
