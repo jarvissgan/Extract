@@ -1,7 +1,8 @@
 import axios from "axios";
 import express from "express";
 // import ViteExpress from "vite-express";
-import routes from "./api/routes.js";
+import userRouter from "./api/userRoutes.js";
+import transactionRouter from "./api/transactionRoutes.js";
 import cors from "cors";
 const app = express();
 // parse application/x-www-form-urlencoded
@@ -11,7 +12,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 
-app.use("/api", routes);
+app.use("/api", userRouter);
+app.use("/api", transactionRouter);
 // app.use("/", routes);
 
 // app.get("/test", (req, res) => {

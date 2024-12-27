@@ -8,7 +8,7 @@ import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 import Sqids from "sqids";
 import userNotFound from "../errors.js"; //error messages
 
-const router = Router();
+const userRouter = Router();
 const sqids = new Sqids({ minLength: 8 });
 
 function decodeSqid(sqidString) {
@@ -21,113 +21,8 @@ function encodeSqid(user_id) {
   return encodedId;
 }
 
-//TODO create authentication method for backend
-router.get("/test", (req, res) => {
-  res.send("Hello World! Test transaction_UUID: " + transaction_uuidv4());
-});
-
-// gets transaction based on user id via sqid
-router.get("/transaction/:sqid", (req, res) => {
-  const query = "SELECT * FROM transaction WHERE user_id = ?";
-  const sqid = req.params.sqid;
-  const user_id = decodeSqid(sqid);
-
-  if (!user_id || user_id == undefined) {
-    return res.status(400).json({
-      error: `${sqid} is invalid or doesn't contain anything. Please check and try again.`,
-    });
-  }
-  db.query(query, user_id, (err, results) => {
-    if (err) {
-      console.error("Error retrieving user:", err.message);
-      return res.status(500).json({ error: "Database error" });
-    }
-
-    if (results.length === 0) {
-      console.log(`Transactions not found. user_id: '${user_id}' `);
-      return res.status(404).json({
-        message: `Transactions with user_sqid '${sqid}' not found. Check and try again.`,
-      });
-    }
-    console.log(
-      `retireved transactions from user sqid ${sqid}.\n${JSON.stringify(
-        results,
-        null,
-        2
-      )}`
-    );
-    return res.status(200).json(results);
-  });
-});
-
-//creates transaction and assigns it a transaction_UUID
-router.post("/transaction", (req, res) => {
-  const transaction_uuid = uuidv4();
-  const created_timestamp = new Date();
-
-  const { sqid, transaction_name, transaction_amount, transaction_details } =
-    req.body;
-  const user_id = decodeSqid(sqid);
-
-  console.log("user_id: ", user_id);
-
-  // Validate input values
-  const valueDictionary = {
-    user_id: user_id,
-    transaction_name: transaction_name,
-    transaction_amount: transaction_amount,
-    transaction_details: transaction_details,
-  };
-
-  for (const [key, value] of Object.entries(valueDictionary)) {
-    if (
-      !value ||
-      (typeof value === "object" && Object.keys(value).length === 0)
-    ) {
-      return res.status(400).json({
-        error: `${key} doesn't contain anything. Please check and try again.`,
-      });
-    }
-  }
-
-  // Prepare SQL query and values
-  const query =
-    "INSERT INTO transaction (transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp) VALUES (?,?,?,?,?,?)";
-  const values = [
-    transaction_uuid,
-    user_id,
-    transaction_name,
-    transaction_amount,
-    JSON.stringify(transaction_details),
-    created_timestamp,
-  ];
-
-  // Execute query
-  db.query(query, values, (err, results) => {
-    if (err) {
-      console.error(`Error ${err.message}`);
-      return res.status(500).json({ error: "Database error" });
-    }
-
-    if (results.affectedRows === 0) {
-      return res.status(404).json({
-        message: `Unable to create transaction ${transaction_uuid} due to an unexpected error. Check details and try again.`,
-      });
-    }
-
-    console.log(
-      `Created transaction\ntransaction_uuid: '${transaction_uuid}'\nuser_sqid: '${sqid}'\ncreated_time: '${created_timestamp}'`
-    );
-    return res.status(200).json({
-      transaction_uuid: transaction_uuid,
-      user_sqid: sqid,
-      created_timestamp: created_timestamp,
-    });
-  });
-});
-
 // gets user based on id via sqid
-router.get("/user/:sqid", (req, res) => {
+userRouter.get("/user/:sqid", (req, res) => {
   const query = "SELECT * FROM users WHERE user_id = ?";
   const sqid = req.params.sqid;
   const userId = decodeSqid(sqid);
@@ -155,7 +50,7 @@ router.get("/user/:sqid", (req, res) => {
 });
 
 // creates user based on json received
-router.post("/user", (req, res) => {
+userRouter.post("/user", (req, res) => {
   const created_timestamp = new Date();
   const updated_timestamp = new Date();
   const { username, user_details, preference_json, account_status } = req.body;
@@ -225,4 +120,4 @@ router.post("/user", (req, res) => {
   });
 });
 
-export default router;
+export default userRouter;
