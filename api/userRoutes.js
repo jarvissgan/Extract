@@ -23,11 +23,10 @@ function encodeSqid(user_id) {
 
 // gets user based on id via sqid
 userRouter.get("/user/:sqid", (req, res) => {
-  const query = "SELECT * FROM users WHERE user_id = ?";
-  const sqid = req.params.sqid;
-  const userId = decodeSqid(sqid);
+  const query = "SELECT * FROM users WHERE user_sqid = ?";
+  const user_sqid = req.params.sqid;
 
-  db.query(query, userId, (err, results) => {
+  db.query(query, user_sqid, (err, results) => {
     if (err) {
       console.error("Error retrieving user:", err.message);
       return res.status(500).json({ error: "Database error" });
@@ -36,10 +35,10 @@ userRouter.get("/user/:sqid", (req, res) => {
     if (results.length === 0) {
       return res
         .status(404)
-        .json({ message: `User with sqid ${sqid} not found` });
+        .json({ message: `User with sqid ${user_sqid} not found` });
     }
     console.log(
-      `retireved user with sqid ${sqid}.\n${JSON.stringify(
+      `retireved user with sqid ${user_sqid}.\n${JSON.stringify(
         results[0],
         null,
         2
@@ -125,7 +124,6 @@ userRouter.put("/user/:sqid", (req, res) => {
   const updated_timestamp = new Date();
   const { username, user_details, preference_json, account_status } = req.body;
   const user_sqid = req.params.sqid;
-  const user_id = decodeSqid(user_sqid);
 
   const valueDictionary = {
     username,
@@ -146,14 +144,14 @@ userRouter.put("/user/:sqid", (req, res) => {
 
   // Insert user into database
   const query = `
-    UPDATE users SET username = ?, user_details = ?, preference_json = ?, account_status = ?, updated_timestamp = ? WHERE user_id = ?`;
+    UPDATE users SET username = ?, user_details = ?, preference_json = ?, account_status = ?, updated_timestamp = ? WHERE user_sqid = ?`;
   const values = [
     username,
     JSON.stringify(user_details),
     JSON.stringify(preference_json),
     JSON.stringify(account_status),
     updated_timestamp,
-    user_id,
+    user_sqid,
   ];
 
   db.query(query, values, (err, results) => {
@@ -182,6 +180,34 @@ userRouter.put("/user/:sqid", (req, res) => {
       preference_json: preference_json,
       account_status: account_status,
       updated_timestamp: updated_timestamp,
+    });
+  });
+});
+
+userRouter.delete("/user/:sqid", (req, res) => {
+  const user_sqid = req.params.sqid;
+  const deleted_timestamp = new Date();
+  const query = "DELETE from users WHERE user_sqid = ?";
+
+  db.query(query, user_sqid, (err, results) => {
+    if (err) {
+      console.error(`Error connecting to the database. ${err.message}`);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({
+        message: `Unable to delete user sqid ${user_sqid} due to an unexpected error, or user might not exist. Check details and try again.`,
+      });
+    }
+    console.log(`Deleted user\n
+      user_sqid: '${user_sqid}', 
+      deleted_timestamp: '${deleted_timestamp}'
+      `);
+
+    return res.status(200).json({
+      user_sqid: user_sqid,
+      deleted_timestamp: deleted_timestamp
     });
   });
 });
