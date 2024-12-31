@@ -120,4 +120,70 @@ userRouter.post("/user", (req, res) => {
   });
 });
 
+// modifies user based on json received
+userRouter.put("/user/:sqid", (req, res) => {
+  const updated_timestamp = new Date();
+  const { username, user_details, preference_json, account_status } = req.body;
+  const user_sqid = req.params.sqid;
+  const user_id = decodeSqid(user_sqid);
+
+  const valueDictionary = {
+    username,
+    user_details,
+    preference_json,
+    account_status,
+  };
+
+  // Validate inputs
+  for (const key in valueDictionary) {
+    const value = valueDictionary[key];
+    if (!value || Object.keys(value).length === 0) {
+      return res.status(400).json({
+        error: `${key} doesn't contain anything. Please check and try again.`,
+      });
+    }
+  }
+
+  // Insert user into database
+  const query = `
+    UPDATE users SET username = ?, user_details = ?, preference_json = ?, account_status = ?, updated_timestamp = ? WHERE user_id = ?`;
+  const values = [
+    username,
+    JSON.stringify(user_details),
+    JSON.stringify(preference_json),
+    JSON.stringify(account_status),
+    updated_timestamp,
+    user_id,
+  ];
+
+  db.query(query, values, (err, results) => {
+    if (err) {
+      console.error(`Error connecting to the database. ${err.message}`);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({
+        message: `Unable to update user sqid ${user_sqid} due to an unexpected error. Check details and try again.`,
+      });
+    }
+    console.log(`Updated user\n
+      user_sqid: '${user_sqid}', 
+      username: '${username}',
+      user_details: '${JSON.stringify(user_details, null)}',
+      preference_json: '${JSON.stringify(preference_json, null)}',
+      account_status: '${JSON.stringify(account_status, null)}',
+      updated_timestamp: '${updated_timestamp}'`);
+
+    return res.status(200).json({
+      user_sqid: user_sqid,
+      username: username,
+      user_details: user_details,
+      preference_json: preference_json,
+      account_status: account_status,
+      updated_timestamp: updated_timestamp,
+    });
+  });
+});
+
 export default userRouter;
