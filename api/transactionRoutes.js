@@ -221,4 +221,32 @@ transactionRouter.put("/transaction/:uuid", (req, res) => {
   });
 });
 
+transactionRouter.delete("/transaction/:uuid", (req, res) => {
+  const transaction_uuid = req.params.uuid;
+  const deleted_timestamp = new Date();
+  const query = "DELETE from transaction WHERE transaction_uuid = ?";
+
+  db.query(query, transaction_uuid, (err, results) => {
+    if (err) {
+      console.error(`Error connecting to the database. ${err.message}`);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({
+        message: `Unable to delete transaction uuid ${transaction_uuid} due to an unexpected error, or transaction might not exist. Check details and try again.`,
+      });
+    }
+    console.log(`Deleted transaction\n
+      transaction_uuid: '${transaction_uuid}', 
+      deleted_timestamp: '${deleted_timestamp}'
+      `);
+
+    return res.status(200).json({
+      transaction_uuid: transaction_uuid,
+      deleted_timestamp: deleted_timestamp
+    });
+  });
+});
+
 export default transactionRouter;
