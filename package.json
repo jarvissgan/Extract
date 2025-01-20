@@ -1,42 +1,43 @@
 {
-  "name": "extract",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "cross-env NODE_ENV=development concurrently \"vite --clearScreen false\" \"nodemon -r dotenv/config server.js\"",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@nextui-org/react": "^2.6.5",
-    "axios": "^1.7.9",
-    "concurrently": "^9.1.0",
-    "cors": "^2.8.5",
-    "cross-env": "^7.0.3",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "framer-motion": "^11.13.1",
-    "mysql": "^2.18.1",
-    "nodemon": "^3.1.7",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "sqids": "^0.3.0",
-    "sql": "^0.78.0",
-    "uuid": "^11.0.3"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.15.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "eslint": "^9.15.0",
-    "eslint-plugin-react": "^7.37.2",
-    "eslint-plugin-react-hooks": "^5.0.0",
-    "eslint-plugin-react-refresh": "^0.4.14",
-    "globals": "^15.12.0",
-    "tailwindcss": "^3.4.16",
-    "vite": "^6.0.1"
-  }
+   "name": "extract",
+   "private": true,
+   "version": "0.0.0",
+   "type": "module",
+   "scripts": {
+      "dev": "cross-env NODE_ENV=development concurrently \"vite --clearScreen false\" \"nodemon -r dotenv/config server.js\"",
+      "build": "vite build",
+      "lint": "eslint .",
+      "preview": "vite preview"
+   },
+   "dependencies": {
+      "@heroui/react": "2.6.14",
+      "axios": "^1.7.9",
+      "concurrently": "^9.1.0",
+      "cors": "^2.8.5",
+      "cross-env": "^7.0.3",
+      "dotenv": "^16.4.7",
+      "express": "^4.21.2",
+      "framer-motion": "^11.13.1",
+      "mysql": "^2.18.1",
+      "nodemon": "^3.1.7",
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1",
+      "react-router": "^7.1.1",
+      "sqids": "^0.3.0",
+      "sql": "^0.78.0",
+      "uuid": "^11.0.3"
+   },
+   "devDependencies": {
+      "@eslint/js": "^9.15.0",
+      "@types/react": "^18.3.12",
+      "@types/react-dom": "^18.3.1",
+      "@vitejs/plugin-react": "^4.3.4",
+      "eslint": "^9.15.0",
+      "eslint-plugin-react": "^7.37.2",
+      "eslint-plugin-react-hooks": "^5.0.0",
+      "eslint-plugin-react-refresh": "^0.4.14",
+      "globals": "^15.12.0",
+      "tailwindcss": "^3.4.16",
+      "vite": "^6.0.1"
+   }
 }
