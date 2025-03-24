@@ -10,11 +10,9 @@ import Sidebar from "./components/sidebar.jsx";
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <HeroUIProvider>
-      <div className="pageDiv">
-        <div className="sideBarDiv">
-          <Sidebar />
-        </div>
-        <div className="outletDiv">
+      <div className="flex h-screen w-screen ">
+        <Sidebar className="basis-1/2" />
+        <div className="grow">
           <Routes>
             <Route path="/" element={<App />} />
             <Route path="home" element={<Home />} />
