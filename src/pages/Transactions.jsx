@@ -65,7 +65,6 @@ const Home = () => {
     //routerOutletDiv
     <div>
       <p>TRANSACTIONS</p>
-      {/* <Sidebar /> */}
       <div className="homeTransactionTable">
         <Table aria-label="Example table with dynamic content">
           <TableHeader columns={columns}>
