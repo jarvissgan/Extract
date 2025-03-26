@@ -17,6 +17,12 @@ const Home = () => {
   // let { sqid } = useParams();
   const sqid = "xiBoCpeN";
   const [userTransactions, setUserTransactions] = useState([]);
+  const [currentMonthlySpending, setCurrentMonthlySpending] = useState(0);
+  const [currentMonth, setCurrentMonth] = useState("");
+  const [firstDate, setFirstDate] = useState("");
+  const [lastDate, setLastDate] = useState("");
+  var currentYear;
+
   const columns = [
     {
       key: "transaction_name",
@@ -33,74 +39,108 @@ const Home = () => {
   ];
 
   useEffect(() => {
-    axios
-      .get(`http://localhost:3000/api/transaction/user/${sqid}`)
-      .then((res) => {
-        console.log("res: ", res.data);
+    const getFirstAndLastDate = (
+      month = new Date().getMonth() + 1,
+      year = new Date().getFullYear()
+    ) => {
 
-        // Parse response data
-        const transactions = res.data;
+      const formattedMonth = month.toString().padStart(2, "0");
+      setCurrentMonth(
+        new Date(year, month - 1).toLocaleString("en-us", { month: "long" })
+      );
 
-        // Transform data to fit table structure
-        const formattedTransactions = transactions.map(
-          (transaction, index) => ({
-            key: index,
-            transaction_name: transaction.transaction_name,
-            transaction_amount: transaction.transaction_amount,
-            transaction_date: transaction.created_timestamp,
-          })
-        );
+      // calculate the first and last date of the month
+      const firstDateFormatted = `${year}-${formattedMonth}-01`;
+      const lastDateFormatted = new Date(year, month, 0); // Last day of the given month
+      const lastDateString = `${year}-${formattedMonth}-${lastDateFormatted.getDate()}`;
 
-        setUserTransactions(formattedTransactions);
-      })
-      .catch((err) => {
-        console.error(
-          `Issues with retrieving transactions from sqid ${sqid}`,
-          err
-        );
-      });
-  }, [sqid]); // Only re-run effect when `sqid` changes
+      setFirstDate(firstDateFormatted);
+      setLastDate(lastDateString);
+    };
+
+    getFirstAndLastDate();
+  }, [sqid]); // re-run when `sqid` changes
+
+  useEffect(() => {
+    if (firstDate && lastDate) {
+      axios
+        .get(
+          `http://localhost:3000/api/transaction/user/${sqid}?startDate=${firstDate} 00:00:00&endDate=${lastDate} 00:00:00`
+        )
+        .then((res) => {
+          console.log("res: ", res.data);
+
+          const transactions = res.data;
+
+          let total = 0;
+          const formattedTransactions = transactions.map(
+            (transaction, index) => {
+              total += transaction.transaction_amount; 
+
+              return {
+                key: index,
+                transaction_name: transaction.transaction_name,
+                transaction_amount: transaction.transaction_amount,
+                transaction_date: transaction.created_timestamp,
+              };
+            }
+          );
+
+          setUserTransactions(formattedTransactions);
+          setCurrentMonthlySpending(total);
+        })
+        .catch((err) => {
+          console.error(
+            `Issues with retrieving transactions from sqid ${sqid}`,
+            err
+          );
+        });
+    }
+  }, [firstDate, lastDate, sqid]);
 
   return (
     //routerOutletDiv
-    <div>
-      <div className="grid grid-flow-col grid-rows-3 gap-4">
-        <Card className="row-span-4">
+    <div className="w-full h-full p-5 sm:p-10">
+      <div className="grid grid-flow-row sm:grid-flow-col grid-rows-1 grid-cols-1 sm:grid-cols-3 sm:grid-rows-4 gap-4 sm:gap-6 h-1/4 sm:h-1/6">
+        <Card className="row-span-4 col-span-1 bg-amber-500">
           <CardBody>
-            <p>test1</p>
+            Spending For {currentMonth}
+            <p>${currentMonthlySpending}</p>
           </CardBody>
         </Card>
-        <Card className="col-span-3">
+        <Card className="row-span-4 col-span-1 bg-amber-500">
           <CardBody>
             <p>test2</p>
           </CardBody>
         </Card>
-        <Card className="col-span-3">
+        <Card className="row-span-4 col-span-1 bg-amber-500">
           <CardBody>
             <p>test3</p>
           </CardBody>
         </Card>
       </div>
-
-      {/* <Sidebar /> */}
-      <div className="homeTransactionTable">
-        <Table aria-label="Example table with dynamic content">
-          <TableHeader columns={columns}>
+      {userTransactions.length != 0 ? (
+        <Table className="pt-5 sm:pt-5 align-text-top">
+          <TableHeader columns={columns} className="row-span-4 col-span-1">
             {(column) => (
               <TableColumn key={column.key}>{column.label}</TableColumn>
             )}
           </TableHeader>
           <TableBody items={userTransactions}>
             {(item) => (
-              <TableRow key={item.key}>
+              <TableRow key={item.key} className="row-span-4 col-span-1">
                 {(columnKey) => (
-                  <TableCell>{getKeyValue(item, columnKey)}</TableCell>
+                  <TableCell className="w-32 ">
+                    {getKeyValue(item, columnKey)}
+                  </TableCell>
                 )}
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
+      ) : (
+        <p> no data avail </p>
+      )}
     </div>
   );
 };

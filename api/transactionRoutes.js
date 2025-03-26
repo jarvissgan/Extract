@@ -25,6 +25,7 @@ function encodeSqid(user_id) {
 
 //example query
 // /transaction/user/123?startDate=2024-03-01 00:00:00&endDate=2024-03-25 23:59:59
+//TODO: add checks for valid start date; eg start date should be before end date
 transactionRouter.get("/transaction/user/:sqid", (req, res) => {
   let query = "";
 
@@ -58,12 +59,12 @@ transactionRouter.get("/transaction/user/:sqid", (req, res) => {
       return res.status(500).json({ error: "Database error" });
     }
 
-    if (results.length === 0) {
-      console.log(`Transactions not found. user_id: '${user_id}' `);
-      return res.status(404).json({
-        message: `Transactions with user_sqid '${sqid}' not found. Check and try again.`,
-      });
-    }
+    // if (results.length === 0) {
+    //   console.log(`Transactions not found. user_id: '${user_id}' `);
+    //   return res.status(404).json({
+    //     message: `Transactions with user_sqid '${sqid}' not found. Check and try again.`,
+    //   });
+    // }
     console.log(
       `retireved transactions from user sqid ${sqid}.\n${JSON.stringify(
         results,
