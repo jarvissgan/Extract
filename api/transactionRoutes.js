@@ -22,17 +22,37 @@ function encodeSqid(user_id) {
 }
 
 // gets transaction based on user id via sqid
+
+//example query
+// /transaction/user/123?startDate=2024-03-01 00:00:00&endDate=2024-03-25 23:59:59
 transactionRouter.get("/transaction/user/:sqid", (req, res) => {
-  const query = "SELECT * FROM transaction WHERE user_id = ?";
-  const sqid = req.params.sqid;
+  let query = "";
+
+  const { sqid } = req.params;
   const user_id = decodeSqid(sqid);
+  let params = [user_id];
+  const { startDate, endDate } = req.query;
 
   if (!user_id || user_id == undefined) {
     return res.status(400).json({
       error: `${sqid} is invalid or doesn't contain anything. Please check and try again.`,
     });
   }
-  db.query(query, user_id, (err, results) => {
+
+  // filters by date if both dates exist
+  if (startDate && endDate) {
+    query =
+      "SELECT * FROM transaction WHERE user_id = ? AND created_timestamp BETWEEN ? AND ?";
+    params.push(startDate, endDate);
+    console.log(
+      `/transaction/user/:sqid: start and end date exists. filtering by startDate: ${startDate} && endDate: ${endDate}`
+    );
+  } else {
+    query = "SELECT * FROM transaction WHERE user_id = ?";
+    console.log(`/transaction/user/:sqid: no filter applied`);
+  }
+
+  db.query(query, params, (err, results) => {
     if (err) {
       console.error("Error retrieving user:", err.message);
       return res.status(500).json({ error: "Database error" });
@@ -59,7 +79,7 @@ transactionRouter.get("/transaction/user/:sqid", (req, res) => {
 transactionRouter.get("/transaction/:uuid", (req, res) => {
   const query = "SELECT * FROM transaction WHERE transaction_uuid = ?";
   const transaction_uuid = req.params.uuid;
-  console.log('transaction_uuid: ', transaction_uuid);
+  console.log("transaction_uuid: ", transaction_uuid);
 
   db.query(query, transaction_uuid, (err, results) => {
     if (err) {
@@ -244,7 +264,7 @@ transactionRouter.delete("/transaction/:uuid", (req, res) => {
 
     return res.status(200).json({
       transaction_uuid: transaction_uuid,
-      deleted_timestamp: deleted_timestamp
+      deleted_timestamp: deleted_timestamp,
     });
   });
 });
