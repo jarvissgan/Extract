@@ -1,6 +1,7 @@
 import { Button, Card, CardBody } from "@heroui/react";
 import React from "react";
 import { useNavigate } from "react-router";
+import { useAuth0 } from "@auth0/auth0-react";
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -8,6 +9,7 @@ function Sidebar() {
   const routeToPage = (route) => {
     navigate(route);
   };
+  const { loginWithRedirect, logout } = useAuth0();
 
   return (
     <div className="flex flex-col h-screen bg-gray-700">
@@ -20,8 +22,20 @@ function Sidebar() {
           <Button className="pt-6" onPress={() => routeToPage("/transactions")}>
             Transactions
           </Button>
-          <Button className="pt-6" onPress={() => console.log("add transaction")}>
+          <Button
+            className="pt-6"
+            onPress={() => console.log("add transaction")}>
             Add Transactions
+          </Button>
+          <Button className="pt-6" onPress={() => loginWithRedirect()}>
+            Login
+          </Button>
+          <Button
+            className="pt-6"
+            onPress={() =>
+              logout({ logoutParams: { returnTo: window.location.origin } })
+            }>
+            Logout
           </Button>
         </CardBody>
       </Card>
