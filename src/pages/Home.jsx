@@ -1,4 +1,5 @@
 import React, { Component, useEffect, useState } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
 import Sidebar from "../components/sidebar";
 import {
   Table,
@@ -11,9 +12,11 @@ import {
 } from "@heroui/table";
 import axios from "axios";
 import { useParams } from "react-router";
-import { Card, CardBody } from "@heroui/react";
+import { Card, CardBody, CircularProgress } from "@heroui/react";
 
 const Home = () => {
+  const { isAuthenticated, user, isLoading } = useAuth0();
+
   // let { sqid } = useParams();
   const sqid = "xiBoCpeN";
   const [userTransactions, setUserTransactions] = useState([]);
@@ -38,12 +41,15 @@ const Home = () => {
     },
   ];
 
+  if (!isAuthenticated) {
+    return <p> not authenticated</p>;
+  }
+
   useEffect(() => {
     const getFirstAndLastDate = (
       month = new Date().getMonth() + 1,
       year = new Date().getFullYear()
     ) => {
-
       const formattedMonth = month.toString().padStart(2, "0");
       setCurrentMonth(
         new Date(year, month - 1).toLocaleString("en-us", { month: "long" })
@@ -75,7 +81,7 @@ const Home = () => {
           let total = 0;
           const formattedTransactions = transactions.map(
             (transaction, index) => {
-              total += transaction.transaction_amount; 
+              total += transaction.transaction_amount;
 
               return {
                 key: index,
@@ -98,51 +104,61 @@ const Home = () => {
     }
   }, [firstDate, lastDate, sqid]);
 
-  return (
-    //routerOutletDiv
-    <div className="w-full h-full p-5 sm:p-10">
-      <div className="grid grid-flow-row sm:grid-flow-col grid-rows-1 grid-cols-1 sm:grid-cols-3 sm:grid-rows-4 gap-4 sm:gap-6 h-1/4 sm:h-1/6">
-        <Card className="row-span-4 col-span-1 bg-amber-500">
-          <CardBody>
-            Spending For {currentMonth}
-            <p>${currentMonthlySpending}</p>
-          </CardBody>
-        </Card>
-        <Card className="row-span-4 col-span-1 bg-amber-500">
-          <CardBody>
-            <p>test2</p>
-          </CardBody>
-        </Card>
-        <Card className="row-span-4 col-span-1 bg-amber-500">
-          <CardBody>
-            <p>test3</p>
-          </CardBody>
-        </Card>
+  if (isLoading) {
+    return (
+      <div className="w-fit h-fit">
+        <CircularProgress aria-label="Loading..." size="sm" />
       </div>
-      {userTransactions.length != 0 ? (
-        <Table className="pt-5 sm:pt-5 align-text-top">
-          <TableHeader columns={columns} className="row-span-4 col-span-1">
-            {(column) => (
-              <TableColumn key={column.key}>{column.label}</TableColumn>
-            )}
-          </TableHeader>
-          <TableBody items={userTransactions}>
-            {(item) => (
-              <TableRow key={item.key} className="row-span-4 col-span-1">
-                {(columnKey) => (
-                  <TableCell className="w-32 ">
-                    {getKeyValue(item, columnKey)}
-                  </TableCell>
-                )}
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      ) : (
-        <p> no data avail </p>
-      )}
-    </div>
-  );
+    );
+  } else {
+    return (
+      //routerOutletDiv
+
+      <div className="w-full h-full p-5 sm:p-10">
+        <p className="text-left pb-1">Hello, {user.name}</p>
+        <div className="grid grid-flow-row sm:grid-flow-col grid-rows-1 grid-cols-1 sm:grid-cols-3 sm:grid-rows-4 gap-4 sm:gap-6 h-1/4 sm:h-1/6">
+          <Card className="row-span-4 col-span-1 bg-amber-500">
+            <CardBody>
+              Spending For {currentMonth}
+              <p>${currentMonthlySpending}</p>
+            </CardBody>
+          </Card>
+          <Card className="row-span-4 col-span-1 bg-amber-500">
+            <CardBody>
+              <p>test2</p>
+            </CardBody>
+          </Card>
+          <Card className="row-span-4 col-span-1 bg-amber-500">
+            <CardBody>
+              <p>test3</p>
+            </CardBody>
+          </Card>
+        </div>
+        {userTransactions.length != 0 ? (
+          <Table className="pt-5 sm:pt-5 align-text-top">
+            <TableHeader columns={columns} className="row-span-4 col-span-1">
+              {(column) => (
+                <TableColumn key={column.key}>{column.label}</TableColumn>
+              )}
+            </TableHeader>
+            <TableBody items={userTransactions}>
+              {(item) => (
+                <TableRow key={item.key} className="row-span-4 col-span-1">
+                  {(columnKey) => (
+                    <TableCell className="w-32 ">
+                      {getKeyValue(item, columnKey)}
+                    </TableCell>
+                  )}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        ) : (
+          <p> no data avail </p>
+        )}
+      </div>
+    );
+  }
 };
 
 export default Home;
