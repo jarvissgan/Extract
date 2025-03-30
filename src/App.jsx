@@ -1,19 +1,35 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
-import "./App.css";
-import { HeroUIProvider } from "@heroui/react";
-import Home from "./pages/Home";
-// import { Home } from
+import React from 'react';
+import { BrowserRouter } from 'react-router';
+import { useNavigate } from 'react-router';
+import { Auth0Provider } from '@auth0/auth0-react';
+import { HeroUIProvider } from '@heroui/react';
+import AppRoutes from './AppRoutes.jsx';
 
-function App() {
+const AppProvider = () => {
+  const navigate = useNavigate();
+
+  const onRedirectCallback = (appState) => {
+    navigate(appState?.returnTo || window.location.pathname);
+  };
+
   return (
-    <>
-    <div>
-      <h1>Landing Page</h1>
-    </div>
-    </>
+    <Auth0Provider
+      domain={process.env.VITE_authDomain}
+      clientId={process.env.vite_authClientID}
+      authorizationParams={{ redirect_uri: `${process.env.VITE_redirectURL}` }}
+      onRedirectCallback={onRedirectCallback}
+    >
+      <HeroUIProvider>
+        <AppRoutes />
+      </HeroUIProvider>
+    </Auth0Provider>
   );
-}
+};
+
+const App = () => (
+  <BrowserRouter>
+    <AppProvider />
+  </BrowserRouter>
+);
 
 export default App;

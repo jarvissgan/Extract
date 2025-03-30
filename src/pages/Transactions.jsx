@@ -1,4 +1,5 @@
 import React, { Component, useEffect, useState } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
 import Sidebar from "../components/sidebar";
 import {
   Table,
@@ -13,7 +14,9 @@ import axios from "axios";
 import { useParams } from "react-router";
 import { Card, CardBody } from "@heroui/react";
 
-const Home = () => {
+const Transactions = () => {
+  const { user } = useAuth0();
+
   // let { sqid } = useParams();
   const sqid = "xiBoCpeN";
   const [userTransactions, setUserTransactions] = useState([]);
@@ -64,7 +67,7 @@ const Home = () => {
   return (
     //routerOutletDiv
     <div>
-      <p>TRANSACTIONS</p>
+      <p>Hello, ${user.name}</p>
       <div className="homeTransactionTable">
         <Table aria-label="Example table with dynamic content">
           <TableHeader columns={columns}>
@@ -87,4 +90,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default Transactions;
