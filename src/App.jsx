@@ -1,9 +1,9 @@
-import React from 'react';
-import { BrowserRouter } from 'react-router';
-import { useNavigate } from 'react-router';
-import { Auth0Provider } from '@auth0/auth0-react';
-import { HeroUIProvider } from '@heroui/react';
-import AppRoutes from './AppRoutes.jsx';
+import React from "react";
+import { BrowserRouter } from "react-router";
+import { useNavigate } from "react-router";
+import { Auth0Provider } from "@auth0/auth0-react";
+import { HeroUIProvider } from "@heroui/react";
+import AppRoutes from "./AppRoutes.jsx";
 
 const AppProvider = () => {
   const navigate = useNavigate();
@@ -18,9 +18,12 @@ const AppProvider = () => {
       clientId={process.env.vite_authClientID}
       authorizationParams={{ redirect_uri: `${process.env.VITE_redirectURL}` }}
       onRedirectCallback={onRedirectCallback}
-    >
+      useRefreshTokens={true}
+      cacheLocation={"memory"}>
       <HeroUIProvider>
-        <AppRoutes />
+        <main className="dark">
+          <AppRoutes />
+        </main>
       </HeroUIProvider>
     </Auth0Provider>
   );
