@@ -1,32 +1,10 @@
-/* @import "tailwindcss/base";
+@import "tailwindcss/base";
 
 @import "tailwindcss/components";
 
-@import "tailwindcss/utilities"; */
+@import "tailwindcss/utilities";
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
 
-  /* color-scheme: light dark; */
-  /* color: rgba(255, 255, 255, 0.87); */
-  /* background-color: black; */
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
 
 body {
   display: flex;
@@ -37,72 +15,7 @@ body {
   margin: 0px;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  /* padding: 0.6em 1.2em; */
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  /* background-color: #1a1a1a; */
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-
-button.btnSideNav{
-  width: 170px;
-  height: 60px;
-}
-
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-.sideBarDiv{
-  min-width: 15%;
-  max-width: 15%;
-}
-
-.sideBarParentContainer{
-  background-color: #242424;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  height: 100%;
-}
-
-.buttonContainer{
-  width: 100%;
-  margin-top: 5px;
-  margin-bottom: 5px;
-}
-
-.buttonContainer > div {
-  flex: 50%; /* or - flex: 0 50% - or - flex-basis: 50% - */
-  box-shadow: 0 0 0 1px black;
-  /* margin-bottom: 10px; */
-}
-
-.outletDiv{
-  width: 100%;
-}
-
-.pageDiv{
-  display: flex;
-  flex-direction: row;
-  height: 100vh;
-  width: 100%;
-
-}
 /* 
 .routerOutletDiv{
   display: flex;
@@ -112,16 +25,3 @@ button:focus-visible {
   flex-basis: 50%;
   width: 100%;
 } */
-
-.homeCardRow{
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  flex: 100%;
-}
-
-.homeTransactionTable{
-  display: flex;
-  justify-content: center;
-  flex-direction: row;
-}
