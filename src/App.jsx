@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter } from "react-router";
 import { useNavigate } from "react-router";
 import { Auth0Provider } from "@auth0/auth0-react";
-import { HeroUIProvider } from "@heroui/react";
+import { HeroUIProvider, ToastProvider } from "@heroui/react";
 import AppRoutes from "./AppRoutes.jsx";
 
 const AppProvider = () => {
@@ -21,6 +21,7 @@ const AppProvider = () => {
       useRefreshTokens={true}
       cacheLocation={"memory"}>
       <HeroUIProvider>
+        <ToastProvider/>
         <main className="dark">
           <AppRoutes />
         </main>
