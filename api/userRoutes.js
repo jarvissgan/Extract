@@ -21,6 +21,48 @@ function encodeSqid(user_id) {
   return encodedId;
 }
 
+//checks if user exists via email in params
+userRouter.get("/user", (req, res) => {
+  let query = "";
+
+  let params = [];
+  const { email } = req.query;
+
+  if (email == undefined || !email) {
+    return res.status(400).json({
+      error: `query is invalid or doesn't contain anything. Please check and try again.`,
+    });
+  }
+
+  // filters by date if both dates exist
+  if (email) {
+    query = "SELECT * FROM users WHERE email = ?";
+    console.log(`/user: using email ${email}`);
+    params.push(email);
+  } 
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("Error retrieving user:", err.message);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (results.length === 0) {
+      return res
+        .status(202)
+        .json({ message: `User not found` });
+    }
+    console.log(
+      `retireved user with sqid ${results}.\n${JSON.stringify(
+        results[0],
+        null,
+        2
+      )}`
+    );
+    return res.status(200).json(results[0]);
+  });
+});
+
 // gets user based on id via sqid
 userRouter.get("/user/:sqid", (req, res) => {
   const query = "SELECT * FROM users WHERE user_sqid = ?";
@@ -52,11 +94,12 @@ userRouter.get("/user/:sqid", (req, res) => {
 userRouter.post("/user", (req, res) => {
   const created_timestamp = new Date();
   const updated_timestamp = new Date();
-  const { username, user_details, preference_json, account_status } = req.body;
+  const { username, user_details, email, preference_json, account_status } = req.body;
 
   const valueDictionary = {
     username,
     user_details,
+    email,
     preference_json,
     account_status,
   };
@@ -72,13 +115,12 @@ userRouter.post("/user", (req, res) => {
   }
 
   // Insert user into database
-  const insertQuery = `
-    INSERT INTO users (username, user_details, preference_json, account_status, created_timestamp) 
-    VALUES (?, ?, ?, ?, ?)`;
+  const insertQuery = "INSERT INTO users (username, user_details, preference_json, email, account_status, created_timestamp) VALUES (?, ?, ?, ?, ?, ?) ";
   const insertValues = [
     username,
     JSON.stringify(user_details),
     JSON.stringify(preference_json),
+    email,
     JSON.stringify(account_status),
     created_timestamp,
   ];
@@ -122,13 +164,14 @@ userRouter.post("/user", (req, res) => {
 // modifies user based on json received
 userRouter.put("/user/:sqid", (req, res) => {
   const updated_timestamp = new Date();
-  const { username, user_details, preference_json, account_status } = req.body;
+  const { username, user_details, preference_json, email, account_status } = req.body;
   const user_sqid = req.params.sqid;
 
   const valueDictionary = {
     username,
     user_details,
     preference_json,
+    email,
     account_status,
   };
 
@@ -142,9 +185,8 @@ userRouter.put("/user/:sqid", (req, res) => {
     }
   }
 
-  // Insert user into database
   const query = `
-    UPDATE users SET username = ?, user_details = ?, preference_json = ?, account_status = ?, updated_timestamp = ? WHERE user_sqid = ?`;
+    UPDATE users SET username = ?, user_details = ?, preference_json = ?, email, account_status = ?, updated_timestamp = ? WHERE user_sqid = ?`;
   const values = [
     username,
     JSON.stringify(user_details),
@@ -207,7 +249,7 @@ userRouter.delete("/user/:sqid", (req, res) => {
 
     return res.status(200).json({
       user_sqid: user_sqid,
-      deleted_timestamp: deleted_timestamp
+      deleted_timestamp: deleted_timestamp,
     });
   });
 });

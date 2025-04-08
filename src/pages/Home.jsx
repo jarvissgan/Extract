@@ -1,6 +1,5 @@
 import React, { Component, useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import Sidebar from "../components/sidebar";
 import {
   Table,
   TableHeader,
@@ -17,8 +16,8 @@ import { Card, CardBody, CircularProgress } from "@heroui/react";
 const Home = () => {
   const { isAuthenticated, user, isLoading } = useAuth0();
 
-  // let { sqid } = useParams();
-  const sqid = "xiBoCpeN";
+  let { sqid } = useParams();
+  // const sqid = "xiBoCpeN";
   const [userTransactions, setUserTransactions] = useState([]);
   const [currentMonthlySpending, setCurrentMonthlySpending] = useState(0);
   const [currentMonth, setCurrentMonth] = useState("");
@@ -104,11 +103,18 @@ const Home = () => {
     }
   }, [firstDate, lastDate, sqid]);
 
+  console.log("isLoading: ", isLoading);
+
   if (isLoading) {
     return (
-      <div className="w-fit h-fit">
-        <CircularProgress aria-label="Loading..." size="sm" />
-      </div>
+      <>
+        <CircularProgress
+          className=" flex w-fit h-fit"
+          label={"PLEASE WORK"}
+          aria-label="Loading..."
+          size="lg"
+        />
+      </>
     );
   } else {
     return (
