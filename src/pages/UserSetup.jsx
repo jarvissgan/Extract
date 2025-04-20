@@ -1,16 +1,17 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import axios from "axios";
-import { Button, CircularProgress, Input } from "@heroui/react";
+import { addToast, Button, CircularProgress, Input } from "@heroui/react";
 import UserAccountForm from "../components/UserAccountForm";
 import { useNavigate } from "react-router";
+import axiosInstance from "../../api/axios";
 
 //redirect users here after login.
 //if user is already setup, redirect to home page
 const UserSetup = () => {
   const { isAuthenticated, user, isLoading } = useAuth0();
   const navigate = useNavigate();
-
-  let loading = false;
+  
+  let loading = true;
   const routeToPage = (route) => {
     navigate(route);
   };
@@ -19,61 +20,65 @@ const UserSetup = () => {
   }
 
   if (isAuthenticated) {
-    loading = true;
     //check if user exists in db via email or authentication_id
-    axios
-      .get(`http://localhost:3000/api/user/?email=${user.email}`)
+    axiosInstance
+      .get(`/user/?email=${user.email}`)
       .then((res) => {
-        if (res.status == 202) {
-          console.log("status 202 accepted: user not found");
-          loading = false;
-        }
-        if (res.status === 200) {
-          const result = res.data;
-          console.log("result: ", result);
+        switch (res.status) {
+          case 202:
+            loading = false;
+            console.log("status 202 accepted: user not found");
+            break;
+          case 200:
+            loading = true;
+            const result = res.data;
+            console.log("result: ", result);
 
-          const sqid = result.user_sqid;
-          if (typeof sqid !== "string" || sqid.trim() === "") {
-            console.log(`sqid is invalid or missing. Problem with database.`);
+            const sqid = result.user_sqid;
+            if (typeof sqid !== "string" || sqid.trim() === "") {
+              console.log(`sqid is invalid or missing. Problem with database.`);
+              addToast({
+                title: "Issues with authentication... try again later",
+                variant: "flat",
+                promise: new Promise((resolve) => setTimeout(resolve, 3000)),
+              });
+            } else {
+              console.log("sqid:", sqid);
+              routeToPage(`/home/${sqid}`);
+            }
+            break;
+          case 401:
             addToast({
-              title: "Issues with authentication... try again later",
+              title: "Status 401: Problem with authentication occoured",
               variant: "flat",
               promise: new Promise((resolve) => setTimeout(resolve, 3000)),
             });
-          } else {
-            console.log("sqid:", sqid);
-            routeToPage(`/home/${sqid}`);
-          }
+            console.error("Error:", error);
+            break;
+          default:
+            loading = true;
+            console.log("error la");
+            addToast({
+              title: "Unexpected Error Occured",
+              variant: "flat",
+              promise: new Promise((resolve) => setTimeout(resolve, 3000)),
+            });
+            console.error("Error:", error);
+            break;
         }
       })
       .catch((error) => {
-        if (error.response.status === 404) {
-          addToast({
-            title: "Issues with authentication server... try again later",
-            variant: "flat",
-            promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          });
-          // return user flow to sign-up
-        } else if (error.response.status === 500) {
-          console.log("error.response.status: ", error.response.status);
-          console.log(
-            `status ${error.response.status}: ${JSON.stringify(
-              error.response.data.error
-            )}`
-          );
-          addToast({
-            title: "Issues with contacting the server... try again later",
-            variant: "flat",
-            promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          });
-        } else {
-          console.error("Error fetching user:", error);
-        }
+        addToast({
+          title: "Unexpected Error Occured",
+          variant: "flat",
+          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
+        });
+        console.error("Error:", error);
       });
   }
   return (
     <div className="dark">
-      {!loading ? (
+      {loading ? (
         <>
           <div className="flex justify-center">
             <CircularProgress
