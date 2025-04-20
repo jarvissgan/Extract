@@ -12,6 +12,7 @@ import {
 import axios from "axios";
 import { useParams } from "react-router";
 import { Card, CardBody, CircularProgress } from "@heroui/react";
+import axiosInstance from "../../api/axios";
 
 const Home = () => {
   const { isAuthenticated, user, isLoading } = useAuth0();
@@ -68,9 +69,9 @@ const Home = () => {
 
   useEffect(() => {
     if (firstDate && lastDate) {
-      axios
+      axiosInstance
         .get(
-          `http://localhost:3000/api/transaction/user/${sqid}?startDate=${firstDate} 00:00:00&endDate=${lastDate} 00:00:00`
+          `/transaction/user/${sqid}?startDate=${firstDate} 00:00:00&endDate=${lastDate} 00:00:00`
         )
         .then((res) => {
           console.log("res: ", res.data);
@@ -103,8 +104,6 @@ const Home = () => {
     }
   }, [firstDate, lastDate, sqid]);
 
-  console.log("isLoading: ", isLoading);
-
   if (isLoading) {
     return (
       <>
@@ -123,25 +122,25 @@ const Home = () => {
       <div className="w-full h-full p-5 sm:p-10">
         <p className="text-left pb-1">Hello, {user.name}</p>
         <div className="grid grid-flow-row sm:grid-flow-col grid-rows-1 grid-cols-1 sm:grid-cols-3 sm:grid-rows-4 gap-4 sm:gap-6 h-1/4 sm:h-1/6">
-          <Card className="row-span-4 col-span-1 bg-amber-500">
+          <Card className="row-span-4 col-span-1">
             <CardBody>
               Spending For {currentMonth}
               <p>${currentMonthlySpending}</p>
             </CardBody>
           </Card>
-          <Card className="row-span-4 col-span-1 bg-amber-500">
+          <Card className=" row-span-4 col-span-1">
             <CardBody>
               <p>test2</p>
             </CardBody>
           </Card>
-          <Card className="row-span-4 col-span-1 bg-amber-500">
+          <Card className="row-span-4 col-span-1">
             <CardBody>
               <p>test3</p>
             </CardBody>
           </Card>
         </div>
         {userTransactions.length != 0 ? (
-          <Table className="pt-5 sm:pt-5 align-text-top">
+          <Table className=" pt-5 sm:pt-10 align-text-top ">
             <TableHeader columns={columns} className="row-span-4 col-span-1">
               {(column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>

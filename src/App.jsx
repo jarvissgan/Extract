@@ -16,7 +16,7 @@ const AppProvider = () => {
     <Auth0Provider
       domain={process.env.VITE_authDomain}
       clientId={process.env.vite_authClientID}
-      authorizationParams={{ redirect_uri: `${process.env.VITE_redirectURL}` }}
+      authorizationParams={{ redirect_uri: `${process.env.VITE_redirectURL}`, audience: `${process.env.VITE_authApiAudience}` }}
       onRedirectCallback={onRedirectCallback}
       useRefreshTokens={true}
       cacheLocation={"memory"}>

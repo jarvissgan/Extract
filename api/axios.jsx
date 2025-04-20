@@ -1,12 +1,13 @@
-import axios from 'axios';
+import axios from "axios";
 
-const customAxios = () => {
-  // axios instance for making requests
-  const axiosInstance = axios.create({
-    baseURL: dynamicBaseURL
+const axiosInstance = axios.create({ baseURL: process.env.VITE_axiosBaseUrl });
+
+export const addAccessTokenInterceptor = (getAccessTokenSilently) => {
+  axiosInstance.interceptors.request.use(async (config) => {
+    const token = await getAccessTokenSilently();
+    console.log("token: ", token);
+    config.headers.Authorization = `Bearer ${token}`;
+    return config;
   });
-
-  return axiosInstance;
 };
-
-export default customAxios;
+export default axiosInstance;

@@ -73,7 +73,12 @@ const UserAccountForm = ({
             promise: new Promise((resolve) => setTimeout(resolve, 3000)),
           });
         } else {
-          console.error("Unexpected Error:", error);
+          addToast({
+            title: "Unexpected Error Occured",
+            variant: "flat",
+            promise: new Promise((resolve) => setTimeout(resolve, 3000)),
+          });
+          console.error("Error:", error);
         }
       }
     } else {
