@@ -16,8 +16,10 @@ import axiosInstance from "../../api/axios";
 
 const Home = () => {
   const { isAuthenticated, user, isLoading } = useAuth0();
-
   let { sqid } = useParams();
+  if (!sessionStorage.getItem("sqid")) {
+    sessionStorage.setItem("sqid", sqid);
+  }
   // const sqid = "xiBoCpeN";
   const [userTransactions, setUserTransactions] = useState([]);
   const [currentMonthlySpending, setCurrentMonthlySpending] = useState(0);

@@ -1,5 +1,4 @@
 import { Button, Card, CardBody } from "@heroui/react";
-import React from "react";
 import { useNavigate } from "react-router";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useTheme } from "@heroui/use-theme";
@@ -15,19 +14,23 @@ const Sidebar = () => {
   };
   const { loginWithRedirect, logout } = useAuth0();
 
+  const logoutUser = () => {
+    //deletes session storage and redirects user to landing page
+    sessionStorage.clear()
+    logout({ logoutParams: { returnTo: window.location.origin } })
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-700">
       <div className="basis-15"></div>
-      <Card className="basis-full rounded-none" >
+      <Card className="basis-full rounded-none">
         <CardBody>
           {isAuthenticated && (
             <>
-              <Button className="" onPress={() => routeToPage("/home")}>
+              <Button className="" onPress={() => routeToPage(`/home/${sessionStorage.getItem("sqid")}`)}>
                 Home
               </Button>
-              <Button
-                className=""
-                onPress={() => routeToPage("/transactions")}>
+              <Button className="" onPress={() => routeToPage("/transactions")}>
                 Transactions
               </Button>
               <Button
@@ -38,7 +41,7 @@ const Sidebar = () => {
               <Button
                 className=""
                 onPress={() =>
-                  logout({ logoutParams: { returnTo: window.location.origin } })
+                  logoutUser()
                 }>
                 Logout
               </Button>
