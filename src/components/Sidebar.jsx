@@ -30,7 +30,7 @@ const Sidebar = () => {
               <Button className="" onPress={() => routeToPage(`/home/${sessionStorage.getItem("sqid")}`)}>
                 Home
               </Button>
-              <Button className="" onPress={() => routeToPage("/transactions")}>
+              <Button className="" onPress={() => routeToPage(`/transactions/${sessionStorage.getItem("sqid")}`)}>
                 Transactions
               </Button>
               <Button

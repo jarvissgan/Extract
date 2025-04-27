@@ -23,6 +23,7 @@ const Home = () => {
   // const sqid = "xiBoCpeN";
   const [userTransactions, setUserTransactions] = useState([]);
   const [currentMonthlySpending, setCurrentMonthlySpending] = useState(0);
+  const [monthlyBudget, setMonthlyBudget] = useState(0);
   const [currentMonth, setCurrentMonth] = useState("");
   const [firstDate, setFirstDate] = useState("");
   const [lastDate, setLastDate] = useState("");
@@ -104,6 +105,25 @@ const Home = () => {
           );
         });
     }
+    //retreive user preference via get /user
+    if (sqid) {
+      axiosInstance
+        .get(
+          `/user/${sqid}`
+        )
+        .then((res) => {
+          console.log("res: ", res.data);
+
+          const userPreferences = JSON.parse(res.data.preference_json);
+          setMonthlyBudget(userPreferences.budgets.monthly)
+        })
+        .catch((err) => {
+          console.error(
+            `Issues with retrieving user data from sqid ${sqid}`,
+            err
+          );
+        });
+    }
   }, [firstDate, lastDate, sqid]);
 
   if (isLoading) {
@@ -132,7 +152,10 @@ const Home = () => {
           </Card>
           <Card className=" row-span-4 col-span-1">
             <CardBody>
-              <p>test2</p>
+              <p>Monthly Budget</p>
+              <p>
+                ${currentMonthlySpending} / ${monthlyBudget}
+              </p>
             </CardBody>
           </Card>
           <Card className="row-span-4 col-span-1">

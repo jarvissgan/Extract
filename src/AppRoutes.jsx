@@ -25,7 +25,7 @@ const AppRoutes = () => {
           {isAuthenticated ? (
             <>
               <Route path="/home/:sqid" element={<Home />} />
-              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/transactions/:sqid" element={<Transactions />} />
               <Route path="/setup" element={<UserSetup />} />
             </>
           ) : (
