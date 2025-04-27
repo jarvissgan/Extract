@@ -10,6 +10,7 @@ import {
 import axios from "axios";
 import React from "react";
 import { useNavigate } from "react-router";
+import axiosInstance from "../../api/axios";
 
 const UserAccountForm = ({
   authentication_id,
@@ -20,13 +21,17 @@ const UserAccountForm = ({
 }) => {
   console.log(`First Time Setup: ${firstTime}`);
   const [isSelected, setIsSelected] = React.useState(false);
+  const [monthlyBudget, setMonthlyBudget] = React.useState("")
   const navigate = useNavigate();
 
   const routeToPage = (route) => {
     navigate(route);
   };
 
-  let tooltip =
+  let tooltip_email =
+    "Unable to change email as you used this during the sign-up process.";
+
+  let tooltip_monthlyBudget =
     "Unable to change email as you used this during the sign-up process.";
 
   const onSubmit = async (e) => {
@@ -34,11 +39,14 @@ const UserAccountForm = ({
     e.preventDefault();
     if (firstTime) {
       try {
-        const res = await axios.post(`http://localhost:3000/api/user`, {
+        const res = await axiosInstance.post(`/user`, {
           username: username,
           user_details: "placeholder",
           email: email,
           preference_json: {
+            budgets: {
+              monthly: monthlyBudget,
+            },
             notifications: {
               email: isSelected,
             },
@@ -60,7 +68,11 @@ const UserAccountForm = ({
         }
       } catch (error) {
         if (error.response?.status === 400) {
-          console.log(`status ${error.response.status}: ${JSON.stringify(error.response.data.error)}`);
+          console.log(
+            `status ${error.response.status}: ${JSON.stringify(
+              error.response.data.error
+            )}`
+          );
           addToast({
             title: "Unable to register, try again",
             variant: "flat",
@@ -99,7 +111,7 @@ const UserAccountForm = ({
             placeholder="Enter your username"
             value={username}
           />
-          <Tooltip content={tooltip}>
+          <Tooltip content={tooltip_email}>
             <Input
               isRequired
               isReadOnly
@@ -117,6 +129,17 @@ const UserAccountForm = ({
               placeholder="Enter your email"
               type="email"
               value={email}
+            />
+          </Tooltip>
+
+          <Tooltip content={tooltip_monthlyBudget}>
+            <Input
+              label="Monthly Budget"
+              labelPlacement="inside"
+              name="monthlyBudget"
+              placeholder="Enter your monthly budget"
+              type="text"
+              onValueChange={setMonthlyBudget}
             />
           </Tooltip>
 
