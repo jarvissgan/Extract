@@ -10,7 +10,7 @@ const Sidebar = () => {
   const { isAuthenticated } = useAuth0();
 
   const routeToPage = (route) => {
-    navigate(route);
+    navigate(route, { replace: true});
   };
   const { loginWithRedirect, logout } = useAuth0();
 
