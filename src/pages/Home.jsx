@@ -11,7 +11,13 @@ import {
 } from "@heroui/table";
 import axios from "axios";
 import { useParams } from "react-router";
-import { Card, CardBody, CircularProgress } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CircularProgress,
+  Divider,
+  table,
+} from "@heroui/react";
 import axiosInstance from "../../api/axios";
 
 const Home = () => {
@@ -108,14 +114,12 @@ const Home = () => {
     //retreive user preference via get /user
     if (sqid) {
       axiosInstance
-        .get(
-          `/user/${sqid}`
-        )
+        .get(`/user/${sqid}`)
         .then((res) => {
           console.log("res: ", res.data);
 
           const userPreferences = JSON.parse(res.data.preference_json);
-          setMonthlyBudget(userPreferences.budgets.monthly)
+          setMonthlyBudget(userPreferences.budgets.monthly);
         })
         .catch((err) => {
           console.error(
@@ -141,51 +145,86 @@ const Home = () => {
     return (
       //routerOutletDiv
 
-      <div className="w-full h-full p-5 sm:p-10">
-        <p className="text-left pb-1">Hello, {user.name}</p>
-        <div className="grid grid-flow-row sm:grid-flow-col grid-rows-1 grid-cols-1 sm:grid-cols-3 sm:grid-rows-4 gap-4 sm:gap-6 h-1/4 sm:h-1/6">
-          <Card className="row-span-4 col-span-1">
+      <div className="w-full h-full flex flex-col p-5 md:p-10">
+        <p className="text-black dark:text-white text-left pb-1">
+          Hello, {user.name}
+        </p>
+        <div className="grid grid-flow-row md:grid-flow-col grid-rows-2 grid-cols-1 md:grid-cols-3 md:grid-rows-4 gap-4 md:gap-6">
+          <Card className="md:row-span-4 md:col-span-1 col-span-3 row-span-2">
             <CardBody>
               Spending For {currentMonth}
               <p>${currentMonthlySpending}</p>
             </CardBody>
           </Card>
-          <Card className=" row-span-4 col-span-1">
+          <Card className=" md:row-span-4 md:col-span-1 col-span-3 row-span-2">
             <CardBody>
-              <p>Monthly Budget</p>
+              <p>Monthly Budget Remaining</p>
               <p>
-                ${currentMonthlySpending} / ${monthlyBudget}
+                ${monthlyBudget - currentMonthlySpending} / ${monthlyBudget}
               </p>
             </CardBody>
           </Card>
-          <Card className="row-span-4 col-span-1">
+          <Card className="md:row-span-4 md:col-span-1 col-span-3 row-span-2">
             <CardBody>
               <p>test3</p>
             </CardBody>
           </Card>
         </div>
-        {userTransactions.length != 0 ? (
-          <Table className=" pt-5 sm:pt-10 align-text-top ">
-            <TableHeader columns={columns} className="row-span-4 col-span-1">
-              {(column) => (
-                <TableColumn key={column.key}>{column.label}</TableColumn>
-              )}
-            </TableHeader>
-            <TableBody items={userTransactions}>
-              {(item) => (
-                <TableRow key={item.key} className="row-span-4 col-span-1">
-                  {(columnKey) => (
-                    <TableCell className="w-32 ">
-                      {getKeyValue(item, columnKey)}
-                    </TableCell>
-                  )}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        ) : (
-          <p> no data avail </p>
-        )}
+        <div className="flex-1 pt-5 md:pt-10 h-full">
+          {userTransactions.length != 0 ? (
+            <div className="grid grid-flow-row md:grid-flow-col grid-rows-1 md:grid-cols-2 gap-4 h-full">
+              <div className="">
+                <Table
+                  isStriped
+                  classNames={{ wrapper: "h-full", base: "h-full" }}>
+                  <TableHeader columns={columns} className="">
+                    {(column) => (
+                      <TableColumn key={column.key}>{column.label}</TableColumn>
+                    )}
+                  </TableHeader>
+                  <TableBody items={userTransactions}>
+                    {(item) => (
+                      <TableRow key={item.key} className="">
+                        {(columnKey) => (
+                          <TableCell className="">
+                            {getKeyValue(item, columnKey)}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="col-span-1 align-text-top">
+                <Card className="h-full">
+                  <CardBody>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                    <p>Lorem Ipsum Dolor Something</p>
+                  </CardBody>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            <Table classNames={{ wrapper: "h-full", base: "h-full" }}>
+              <TableHeader columns={columns} className="">
+                {(column) => (
+                  <TableColumn key={column.key}>{column.label}</TableColumn>
+                )}
+              </TableHeader>
+              <TableBody
+                emptyContent={"No data to display for the month."}></TableBody>
+            </Table>
+          )}
+        </div>
       </div>
     );
   }
