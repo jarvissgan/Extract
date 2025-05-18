@@ -2,6 +2,7 @@ import { Button, Card, CardBody } from "@heroui/react";
 import { useNavigate } from "react-router";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useTheme } from "@heroui/use-theme";
+import AddTransaction_ButtonModal from "./AddTransaction_ButtonModal.jsx";
 
 const Sidebar = () => {
   const { theme, setTheme } = useTheme();
@@ -21,9 +22,11 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-700">
-      <div className="basis-15"></div>
-      <Card className="basis-full rounded-none">
+    <div className="dark flex flex-col h-full bg-gray-700">
+      <div className="basis-15">
+        <p>LOGO</p>
+      </div>
+      <Card className="grow rounded-none">
         <CardBody>
           {isAuthenticated && (
             <>
@@ -33,11 +36,7 @@ const Sidebar = () => {
               <Button className="" onPress={() => routeToPage(`/transactions/${sessionStorage.getItem("sqid")}`)}>
                 Transactions
               </Button>
-              <Button
-                className=""
-                onPress={() => console.log("add transaction")}>
-                Add Transactions
-              </Button>
+              <AddTransaction_ButtonModal/>
               <Button
                 className=""
                 onPress={() =>
