@@ -3,10 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import Home from "./pages/Home.jsx";
 import Transactions from "./pages/Transactions";
 import { useAuth0 } from "@auth0/auth0-react";
-import Sidebar from "./components/sidebar";
 import Landing from "./pages/Landing.jsx";
 import UserSetup from "./pages/UserSetup.jsx";
 import { addAccessTokenInterceptor } from "./../api/axios";
+import Sidebar from "./components/Sidebar.jsx";
 
 const AppRoutes = () => {
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
@@ -17,9 +17,8 @@ const AppRoutes = () => {
   }, [getAccessTokenSilently]);
 
   return (
-    <div className="flex h-screen w-screen">
-      <Sidebar className="basis-1/2" />
-      <div className="grow">
+    <div className="flex flex-1 h-screen w-screen overflow-x-hidden">
+      <Sidebar className="" />
         <Routes>
           <Route path="/" element={<Landing />} />
           {isAuthenticated ? (
@@ -33,7 +32,6 @@ const AppRoutes = () => {
           )}
         </Routes>
       </div>
-    </div>
   );
 };
 
