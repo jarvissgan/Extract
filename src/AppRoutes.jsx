@@ -7,6 +7,7 @@ import Landing from "./pages/Landing.jsx";
 import UserSetup from "./pages/UserSetup.jsx";
 import { addAccessTokenInterceptor } from "./../api/axios";
 import Sidebar from "./components/Sidebar.jsx";
+import Transaction_Detailed from "./pages/Transaction_Detailed.jsx";
 
 const AppRoutes = () => {
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
@@ -25,6 +26,7 @@ const AppRoutes = () => {
             <>
               <Route path="/home/:sqid" element={<Home />} />
               <Route path="/transactions/:sqid" element={<Transactions />} />
+              <Route path="/transactions/:sqid/:transaction_uuid" element={<Transaction_Detailed />} />
               <Route path="/setup" element={<UserSetup />} />
             </>
           ) : (

@@ -9,7 +9,7 @@ import {
   TableCell,
   getKeyValue,
 } from "@heroui/table";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Card, CardBody, Divider } from "@heroui/react";
 import axiosInstance from "../../api/axios";
 
@@ -24,23 +24,30 @@ const Transactions = () => {
   const [userTransactions, setUserTransactions] = useState([]);
   const [currentMonthlySpending, setCurrentMonthlySpending] = useState(0);
   const [monthlyBudget, setMonthlyBudget] = useState(0);
+  const [originalUserTransactions, setOriginalUserTransactions] = useState([])
   const [currentMonth, setCurrentMonth] = useState(0);
   const [firstDate, setFirstDate] = useState("");
   const [lastDate, setLastDate] = useState("");
   const columns = [
-    {
-      key: "transaction_name",
-      label: "Transaction Name",
-    },
-    {
-      key: "transaction_amount",
-      label: "Transaction Amount",
-    },
-    {
-      key: "transaction_date",
-      label: "Transaction Date",
-    },
+    { key: "transaction_name", label: "Transaction Name" },
+    { key: "transaction_amount", label: "Transaction Amount" },
+    { key: "transaction_date", label: "Transaction Date" },
   ];
+
+  const navigate = useNavigate();
+
+  const renderCell = (item, columnKey) => {
+    switch (columnKey) {
+      case "transaction_name":
+        return item.transaction_name;
+      case "transaction_amount":
+        return item.transaction_amount;
+      case "transaction_date":
+        return item.created_timestamp;
+      default:
+        return item[columnKey];
+    }
+  };
 
   if (!isAuthenticated) {
     return <p> not authenticated</p>;
@@ -94,6 +101,7 @@ const Transactions = () => {
           );
 
           setUserTransactions(formattedTransactions);
+          setOriginalUserTransactions(transactions)
           setCurrentMonthlySpending(total);
         })
         .catch((err) => {
@@ -156,7 +164,7 @@ const Transactions = () => {
             </CardBody>
           </Card>
         </div>
-        <Divider className="mt-5"/>
+        <Divider className="mt-5" />
         {userTransactions.length != 0 ? (
           <Table isStriped className=" pt-5 align-text-top ">
             <TableHeader columns={columns} className="row-span-4 col-span-1">
@@ -164,13 +172,14 @@ const Transactions = () => {
                 <TableColumn key={column.key}>{column.label}</TableColumn>
               )}
             </TableHeader>
-            <TableBody items={userTransactions}>
+            <TableBody items={originalUserTransactions}>
               {(item) => (
-                <TableRow key={item.key} className="row-span-4 col-span-1">
+                <TableRow
+                  key={item.transaction_uuid}
+                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  onClick={() => navigate(`/transactions/${sessionStorage.getItem("sqid")}/${item.transaction_uuid}`)}>
                   {(columnKey) => (
-                    <TableCell className="w-32 ">
-                      {getKeyValue(item, columnKey)}
-                    </TableCell>
+                    <TableCell>{renderCell(item, columnKey)}</TableCell>
                   )}
                 </TableRow>
               )}
