@@ -22,7 +22,7 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="dark flex flex-col h-full bg-gray-700">
+    <div className="dark flex flex-col bg-gray-700">
       <div className="basis-15">
         <p>LOGO</p>
       </div>
