@@ -19,10 +19,10 @@ const AppProvider = () => {
       authorizationParams={{ redirect_uri: `${process.env.VITE_redirectURL}`, audience: `${process.env.VITE_authApiAudience}` }}
       onRedirectCallback={onRedirectCallback}
       useRefreshTokens={true}
-      cacheLocation={"memory"}>
+      cacheLocation={"localstorage"}>
       <HeroUIProvider>
         <ToastProvider/>
-        <main className="dark">
+        <main className="">
           <AppRoutes />
         </main>
       </HeroUIProvider>

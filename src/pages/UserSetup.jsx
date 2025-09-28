@@ -44,6 +44,9 @@ const UserSetup = () => {
               });
             } else {
               console.log("sqid:", sqid);
+              if(!sqid == null){
+                routeToPage()
+              }
               routeToPage(`/home/${sqid}`);
             }
             break;
