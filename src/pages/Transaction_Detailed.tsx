@@ -1,17 +1,9 @@
-import {
-  addToast,
-  Button,
-  Checkbox,
-  Divider,
-  Form,
-  Input,
-  Textarea,
-  Tooltip,
-  user,
-} from "@heroui/react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axios";
 import { useNavigate, useParams } from "react-router";
+import { Button, Divider, Input, Textarea, TextInput } from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 
 const Transaction_Detailed = () => {
   const [transactionAmount, setTransactionAmount] = useState(0);
@@ -19,7 +11,7 @@ const Transaction_Detailed = () => {
   const [transactionCategory, setTransactionCategory] = useState("placeholder");
   const [transactionDetails, setTransactionDetails] = useState({});
   const [editFlag, setEditflag] = useState(false);
-  const [transactionNote, setTransactionNote] = useState()
+  const [transactionNote, setTransactionNote] = useState("");
   let { sqid, transaction_uuid } = useParams();
 
   useEffect(() => {
@@ -28,24 +20,26 @@ const Transaction_Detailed = () => {
 
   const navigate = useNavigate();
 
-  const routeToPage = (route) => {
+  const routeToPage = (route: any) => {
     navigate(route, { replace: true });
   };
 
-  const getTransactionDetail = async (e) => {
+  const getTransactionDetail = async () => {
     try {
       await axiosInstance
         .get(`/transaction/${transaction_uuid}`)
-        .then((res) => {
+        .then((res: any) => {
           const transactions = res.data;
           setTransactionName(res.data.transaction_name);
           setTransactionAmount(res.data.transaction_amount);
           setTransactionDetails(JSON.parse(res.data.transaction_details));
-          setTransactionNote(JSON.parse(res.data.transaction_details).transaction_note);
+          setTransactionNote(
+            JSON.parse(res.data.transaction_details).transaction_note
+          );
           // setUserTransactions(formattedTransactions);
           // setCurrentMonthlySpending(total);
         })
-        .catch((err) => {
+        .catch((err: any) => {
           console.error(
             `Issues with retrieving transactions from uuid ${transaction_uuid}`,
             err
@@ -59,7 +53,7 @@ const Transaction_Detailed = () => {
       }
     }
   };
-  const updateTransaction = async (e) => {
+  const updateTransaction = async (e: any) => {
     e.preventDefault();
     console.log("updating transaction");
     // requires sqid, transactionName, transactionAmount, transactionDetails
@@ -69,45 +63,36 @@ const Transaction_Detailed = () => {
         transaction_amount: transactionAmount,
         transaction_details: {
           category: transactionCategory,
-          transaction_note: transactionNote
+          transaction_note: transactionNote,
         },
       });
 
       if (res.status === 200) {
         console.log(`updated transaction ${transaction_uuid}`);
-        addToast({
-          title: "Successfully updated transaction!",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          color: "success",
+        notifications.show({
+          message: "Successfully Updated Transaction!",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       if (error.response?.status === 400) {
         console.log(
           `status ${error.response.status}: ${JSON.stringify(
             error.response.data.error
           )}`
         );
-        addToast({
-          title: "Unable to update transaction, try again",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          color: "danger",
+        notifications.show({
+          title: "Status 400: Bad Request",
+          message: "Unable to update transaction, try again",
         });
       } else if (error.response?.status === 500) {
-        addToast({
-          title: "Issues Contacting Server, Try again later",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          color: "danger",
+        notifications.show({
+          title: "Status 500: Internal Server Error",
+          message: "Issues Contacting Server, Try again later",
         });
       } else {
-        addToast({
+        notifications.show({
           title: "Unexpected Error Occured",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          color: "danger",
+          message: "Try again now or later",
         });
         console.error("Error:", error);
       }
@@ -118,48 +103,51 @@ const Transaction_Detailed = () => {
     <div className="flex flex-col w-full h-full p-10">
       <div className="flex flex-row w-full justify-between items-center">
         <div className="flex flex-row items-center gap-2">
-          <Button onPress={()=> navigate(-1)}>Back</Button>
+          <Button onClick={() => navigate(-1)}>Back</Button>
           <p>Transaction Details</p>
         </div>
-        <Button onPress={() => setEditflag(!editFlag)}>Edit</Button>
+        <Button onClick={() => setEditflag(!editFlag)}>Edit</Button>
       </div>
 
       <Divider />
       <div className="flex justify-between h-full pt-5 ">
-        <Form className="w-full h-full space-y-4" onSubmit={updateTransaction}>
+        <form className="w-full h-full space-y-4" onSubmit={updateTransaction}>
           {/* <div className="flex flex-col gap-4 max-w-md"> */}
-          <Input
+          <TextInput
+            required
             autoFocus
-            isRequired
-            isReadOnly={!editFlag}
+            withAsterisk
+            readOnly={!editFlag}
             label="Transaction Name"
             placeholder="Enter your transaction name"
             variant="bordered"
-            onValueChange={setTransactionName}
+            onChangeCapture={(e) => setTransactionName(e.currentTarget.value)}
             value={transactionName}
           />
-          <Input
-            isRequired
-            isReadOnly={!editFlag}
+          <TextInput
+            required
+            type="number"
+            withAsterisk
+            readOnly={!editFlag}
             label="Amount"
             placeholder="Enter your transaction Amount"
             variant="bordered"
-            onValueChange={setTransactionAmount}
+            onChange={(e) =>
+              setTransactionAmount(e.currentTarget.valueAsNumber)
+            }
             value={transactionAmount}
           />
           {/* </div> */}
           <Textarea
-            isReadOnly={!editFlag}
+            readOnly={!editFlag}
             value={transactionNote}
-            onChange={(e)=> setTransactionNote(e.target.value)}
+            onChange={(e) => setTransactionNote(e.currentTarget.value)}
             label="Transaction Description"></Textarea>
           <Button className="justify-end" type="submit">
             Update Transaction
           </Button>
-        </Form>
+        </form>
       </div>
     </div>
   );
 };
-
-export default Transaction_Detailed;

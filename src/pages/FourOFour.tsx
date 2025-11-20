@@ -1,6 +1,5 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { Button } from "@heroui/react";
-import React from "react";
+import { Button } from "@mantine/core";
 import { useNavigate } from "react-router";
 
 //404 not found
@@ -8,7 +7,7 @@ const FourOFour = () => {
   const { isAuthenticated, logout } = useAuth0();
   const navigate = useNavigate();
 
-  const routeToPage = (route) => {
+  const routeToPage = (route: any) => {
     navigate(route, { replace: true });
   };
 
@@ -23,7 +22,7 @@ const FourOFour = () => {
       <p>404 link not found</p>
       {sessionStorage.getItem("sqid") && isAuthenticated ? (
         <Button
-          onPress={() =>
+          onClick={() =>
             routeToPage(`/home/${sessionStorage.getItem("sqid")}`)
           }>
           Go Back to home
@@ -31,7 +30,7 @@ const FourOFour = () => {
       ) : (
         <div>
           <p>You are no longer authenticated. Please reauthenticate!</p>
-          <Button onPress={logoutUser}>
+          <Button onClick={logoutUser}>
             Go Back to landing page
           </Button>
         </div>

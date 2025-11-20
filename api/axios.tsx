@@ -2,7 +2,7 @@ import axios from "axios";
 
 const axiosInstance = axios.create({ baseURL: process.env.VITE_axiosBaseUrl });
 
-export const addAccessTokenInterceptor = (getAccessTokenSilently) => {
+export const addAccessTokenInterceptor = (getAccessTokenSilently: any) => {
   axiosInstance.interceptors.request.use(async (config) => {
     const token = await getAccessTokenSilently();
     console.log("token: ", token);
