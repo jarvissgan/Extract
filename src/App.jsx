@@ -2,8 +2,8 @@ import React from "react";
 import { BrowserRouter } from "react-router";
 import { useNavigate } from "react-router";
 import { Auth0Provider } from "@auth0/auth0-react";
-import { HeroUIProvider, ToastProvider } from "@heroui/react";
 import AppRoutes from "./AppRoutes.jsx";
+import { MantineProvider, Notification } from "@mantine/core";
 
 const AppProvider = () => {
   const navigate = useNavigate();
@@ -16,16 +16,19 @@ const AppProvider = () => {
     <Auth0Provider
       domain={process.env.VITE_authDomain}
       clientId={process.env.vite_authClientID}
-      authorizationParams={{ redirect_uri: `${process.env.VITE_redirectURL}`, audience: `${process.env.VITE_authApiAudience}` }}
+      authorizationParams={{
+        redirect_uri: `${process.env.VITE_redirectURL}`,
+        audience: `${process.env.VITE_authApiAudience}`,
+      }}
       onRedirectCallback={onRedirectCallback}
       useRefreshTokens={true}
       cacheLocation={"localstorage"}>
-      <HeroUIProvider>
-        <ToastProvider/>
+      <MantineProvider>
+        <Notification />
         <main className="">
           <AppRoutes />
         </main>
-      </HeroUIProvider>
+      </MantineProvider>
     </Auth0Provider>
   );
 };
