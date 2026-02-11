@@ -1,20 +1,12 @@
 // import { initializeApp } from "firebase/app";
-import axios from "axios";
-import express, { response } from "express";
 import { Router } from "express";
 import { db } from "../db-connections.js";
-import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import Sqids from "sqids";
-import userNotFound from "../errors.js"; //error messages
 
 const userRouter = Router();
 const sqids = new Sqids({ minLength: 8 });
 
-function decodeSqid(sqidString) {
-  const decodedId = sqids.decode(sqidString);
-  return decodedId;
-}
 
 function encodeSqid(user_id) {
   const encodedId = sqids.encode(user_id);

@@ -1,9 +1,8 @@
-import React from "react";
-import { BrowserRouter } from "react-router";
-import { useNavigate } from "react-router";
+import { BrowserRouter, useNavigate } from "react-router";
 import { Auth0Provider } from "@auth0/auth0-react";
+import { MantineProvider } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
 import AppRoutes from "./AppRoutes.jsx";
-import { MantineProvider, Notification } from "@mantine/core";
 
 const AppProvider = () => {
   const navigate = useNavigate();
@@ -14,18 +13,19 @@ const AppProvider = () => {
 
   return (
     <Auth0Provider
-      domain={process.env.VITE_authDomain}
-      clientId={process.env.vite_authClientID}
+      domain={import.meta.env.VITE_authDomain}
+      clientId={import.meta.env.vite_authClientID}
       authorizationParams={{
-        redirect_uri: `${process.env.VITE_redirectURL}`,
-        audience: `${process.env.VITE_authApiAudience}`,
+        redirect_uri: `${import.meta.env.VITE_redirectURL}`,
+        audience: `${import.meta.env.VITE_authApiAudience}`,
       }}
       onRedirectCallback={onRedirectCallback}
-      useRefreshTokens={true}
-      cacheLocation={"localstorage"}>
-      <MantineProvider>
-        <Notification />
-        <main className="">
+      useRefreshTokens
+      cacheLocation="localstorage"
+    >
+      <MantineProvider defaultColorScheme="dark">
+        <Notifications />
+        <main>
           <AppRoutes />
         </main>
       </MantineProvider>

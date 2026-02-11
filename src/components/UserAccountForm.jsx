@@ -1,163 +1,100 @@
-import {
-  addToast,
-  Button,
-  Checkbox,
-  Form,
-  Input,
-  Tooltip,
-  user,
-} from "@heroui/react";
-import axios from "axios";
 import React from "react";
+import { Button, Checkbox, Group, Stack, TextInput, Tooltip } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useNavigate } from "react-router";
 import axiosInstance from "../../api/axios";
 
 const UserAccountForm = ({
-  authentication_id,
   firstTime,
   username,
   email,
   accountStatus,
 }) => {
-  console.log(`First Time Setup: ${firstTime}`);
   const [isSelected, setIsSelected] = React.useState(false);
-  const [monthlyBudget, setMonthlyBudget] = React.useState("")
+  const [monthlyBudget, setMonthlyBudget] = React.useState("");
   const navigate = useNavigate();
 
   const routeToPage = (route) => {
     navigate(route);
   };
 
-  let tooltip_email =
-    "Unable to change email as you used this during the sign-up process.";
+  const onSubmit = async (event) => {
+    event.preventDefault();
 
-  let tooltip_monthlyBudget =
-    "Unable to change email as you used this during the sign-up process.";
+    if (!firstTime) {
+      return;
+    }
 
-  const onSubmit = async (e) => {
-    console.log(accountStatus);
-    e.preventDefault();
-    if (firstTime) {
-      try {
-        const res = await axiosInstance.post(`/user`, {
-          username: username,
-          user_details: "placeholder",
-          email: email,
-          preference_json: {
-            budgets: {
-              monthly: monthlyBudget,
-            },
-            notifications: {
-              email: isSelected,
-            },
+    try {
+      const res = await axiosInstance.post(`/user`, {
+        username,
+        user_details: "",
+        email,
+        preference_json: {
+          budgets: {
+            monthly: monthlyBudget,
           },
-          account_status: {
-            status: accountStatus,
+          notifications: {
+            email: isSelected,
           },
+        },
+        account_status: {
+          status: accountStatus,
+        },
+      });
+
+      const sqid = res.data.sqid;
+      if (res.status === 200) {
+        notifications.show({
+          title: "Successfully Registered",
+          message: `User ${username} created.`,
+          color: "green",
         });
-
-        const sqid = res.data.sqid;
-        if (res.status === 200) {
-          console.log(`user ${username} created with sqid ${sqid}`);
-          addToast({
-            title: "Successfully Registered",
-            variant: "flat",
-            promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          });
-          routeToPage(`/home/${sqid}`);
-        }
-      } catch (error) {
-        if (error.response?.status === 400) {
-          console.log(
-            `status ${error.response.status}: ${JSON.stringify(
-              error.response.data.error
-            )}`
-          );
-          addToast({
-            title: "Unable to register, try again",
-            variant: "flat",
-            promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          });
-        } else if (error.response?.status === 500) {
-          addToast({
-            title: "Issues Contacting Server, Try again later",
-            variant: "flat",
-            promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          });
-        } else {
-          addToast({
-            title: "Unexpected Error Occured",
-            variant: "flat",
-            promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-          });
-          console.error("Error:", error);
-        }
+        routeToPage(`/home/${sqid}`);
       }
-    } else {
-      //for modifying user
+    } catch (error) {
+      notifications.show({
+        title: "Registration failed",
+        message:
+          error.response?.status === 500
+            ? "Issues contacting server. Try again later."
+            : "Unable to register, try again.",
+        color: "red",
+      });
     }
   };
 
   return (
-    <div>
-      <Form
-        className="w-full justify-center items-center space-y-4"
-        onSubmit={onSubmit}>
-        <div className="flex flex-col gap-4 max-w-md">
-          <Input
-            isRequired
-            label="Username"
-            name="username"
-            placeholder="Enter your username"
-            value={username}
-          />
-          <Tooltip content={tooltip_email}>
-            <Input
-              isRequired
-              isReadOnly
-              errorMessage={({ validationDetails }) => {
-                if (validationDetails.valueMissing) {
-                  return "Please enter your email";
-                }
-                if (validationDetails.typeMismatch) {
-                  return "Please enter a valid email address";
-                }
-              }}
-              label="Email"
-              labelPlacement="inside"
-              name="email"
-              placeholder="Enter your email"
-              type="email"
-              value={email}
-            />
-          </Tooltip>
+    <form className="w-full" onSubmit={onSubmit}>
+      <Stack maw={420}>
+        <TextInput required label="Username" placeholder="Enter your username" value={username} readOnly />
 
-          <Tooltip content={tooltip_monthlyBudget}>
-            <Input
-              label="Monthly Budget"
-              labelPlacement="inside"
-              name="monthlyBudget"
-              placeholder="Enter your monthly budget"
-              type="text"
-              onValueChange={setMonthlyBudget}
-            />
-          </Tooltip>
+        <Tooltip label="Unable to change email as you used this during the sign-up process.">
+          <TextInput required readOnly label="Email" placeholder="Enter your email" type="email" value={email} />
+        </Tooltip>
 
-          <Checkbox isSelected={isSelected} onValueChange={setIsSelected}>
-            I would like to receive email notifications
-          </Checkbox>
+        <TextInput
+          label="Monthly Budget"
+          placeholder="Enter your monthly budget"
+          type="number"
+          value={monthlyBudget}
+          onChange={(event) => setMonthlyBudget(event.currentTarget.value)}
+        />
 
-          <div className="flex gap-4">
-            <Button className="w-full" color="primary" type="submit">
-              Submit
-            </Button>
-            <Button type="reset" variant="bordered">
-              Reset
-            </Button>
-          </div>
-        </div>
-      </Form>
-    </div>
+        <Checkbox
+          checked={isSelected}
+          onChange={(event) => setIsSelected(event.currentTarget.checked)}
+          label="I would like to receive email notifications"
+        />
+
+        <Group>
+          <Button type="submit">Submit</Button>
+          <Button type="reset" variant="default">
+            Reset
+          </Button>
+        </Group>
+      </Stack>
+    </form>
   );
 };
 

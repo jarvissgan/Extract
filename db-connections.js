@@ -1,7 +1,6 @@
-// var mysql = require('mysql');
-import mysql  from "mysql";
+import mysql from "mysql";
 
-var db = mysql.createConnection({
+const db = mysql.createConnection({
   host: process.env.VITE_dbHost,
   port: process.env.VITE_dbPort,
   user: process.env.VITE_dbUser,
