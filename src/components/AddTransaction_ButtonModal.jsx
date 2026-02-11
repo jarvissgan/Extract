@@ -1,174 +1,135 @@
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
-  useDisclosure,
-  Checkbox,
-  Input,
-  Link,
-  addToast,
-  Form,
-} from "@heroui/react";
-import axiosInstance from "../../api/axios";
+  Group,
+  Modal,
+  NumberInput,
+  Select,
+  Stack,
+  TextInput,
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
+import axiosInstance from "../../api/axios";
 
 const AddTransaction_ButtonModal = () => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [transaction_amount, setTransactionAmount] = useState(0);
-  const [transaction_name, setTransaction_name] = useState("");
-  const [errors, setErrors] = useState({});
-  const [modalSize, setModalSize] = useState("4xl");
-  const [transactionCategory, setTransactionCategory] = useState("placeholder");
+  const [opened, { open, close }] = useDisclosure(false);
+  const [expanded, setExpanded] = useState(false);
+  const [transactionAmount, setTransactionAmount] = useState(0);
+  const [transactionName, setTransactionName] = useState("");
+  const [transactionCategory, setTransactionCategory] = useState("other");
 
   const navigate = useNavigate();
-  const routeToPage = (route) => {
-    navigate(route, { replace: true });
-  };
-
-  //checks if sqid exists
   const sqid = sessionStorage.getItem("sqid");
+
   if (!sqid) {
-    routeToPage("/setup");
+    navigate("/setup", { replace: true });
   }
 
-  const validateAmount = (transaction_amount) =>
-    !isNaN(transaction_amount) && isFinite(Number(transaction_amount));
+  const isInvalidAmount = useMemo(
+    () => transactionAmount === "" || Number.isNaN(Number(transactionAmount)),
+    [transactionAmount]
+  );
 
-  const isInvalid = useMemo(() => {
-    if (transaction_amount === "") return false;
+  const onSubmit = async (event) => {
+    event.preventDefault();
 
-    return validateAmount(transaction_amount) ? false : true;
-  }, [transaction_amount]);
+    if (!transactionName || isInvalidAmount) {
+      notifications.show({
+        title: "Validation error",
+        message: "Please enter a transaction name and valid amount.",
+        color: "red",
+      });
+      return;
+    }
 
-  const onSubmit = async (e) => {
-    // console.log("e: ", e);
-    e.preventDefault();
-    // const data = Object.fromEntries(new FormData(e.currentTarget));
-
-    // if (!data.transaction_amount) {
-    //   setErrors({ transaction_amount: "An amount is required" });
-
-    //   return;
-    // }
-
-    // if (!data.transaction_name) {
-    //   setErrors({ transaction_name: "A transaction name is required" });
-    //   return;
-    // }
-    // requires sqid, transaction_name, transaction_amount, transaction_details
     try {
       const res = await axiosInstance.post(`/transaction`, {
-        sqid: sqid,
-        transaction_name: transaction_name,
-        transaction_amount: transaction_amount,
+        sqid,
+        transaction_name: transactionName,
+        transaction_amount: Number(transactionAmount),
         transaction_details: {
           category: transactionCategory,
         },
       });
 
-      const transaction_uuid = res.data.transaction_uuid;
       if (res.status === 200) {
-        console.log(`created transaction ${transaction_uuid}`);
-        addToast({
-          title: "Successfully created transaction",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
+        notifications.show({
+          title: "Success",
+          message: "Successfully created transaction.",
+          color: "green",
         });
+        close();
       }
     } catch (error) {
-      if (error.response?.status === 400) {
-        console.log(
-          `status ${error.response.status}: ${JSON.stringify(
-            error.response.data.error
-          )}`
-        );
-        addToast({
-          title: "Unable create transaction, try again",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-        });
-      } else if (error.response?.status === 500) {
-        addToast({
-          title: "Issues Contacting Server, Try again later",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-        });
-      } else {
-        addToast({
-          title: "Unexpected Error Occured",
-          variant: "flat",
-          promise: new Promise((resolve) => setTimeout(resolve, 3000)),
-        });
-        console.error("Error:", error);
-      }
-    }
-  };
+      const status = error.response?.status;
 
-  const expand = () => {
-    if (modalSize == "5xl" || "md") {
-      setModalSize("5xl");
-    } else {
-      setModalSize("md");
+      notifications.show({
+        title: "Unable to create transaction",
+        message:
+          status === 500
+            ? "Issues contacting server. Try again later."
+            : "Unexpected error occurred.",
+        color: "red",
+      });
     }
   };
 
   return (
     <>
-      <Button color="primary" onPress={onOpen}>
-        Add Transaction
-      </Button>
+      <Button onClick={open}>Add Transaction</Button>
 
       <Modal
-        isOpen={isOpen}
-        size={modalSize}
-        placement="top-center"
-        onOpenChange={onOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                Add Transactions
-              </ModalHeader>
-              <ModalBody>
-                <Form onSubmit={onSubmit} validationErrors={errors}>
-                  <Input
-                    autoFocus
-                    isRequired
-                    label="Transaction Name"
-                    name="transaction_name"
-                    placeholder="Enter your transaction name"
-                    variant="bordered"
-                    onValueChange={setTransaction_name}
-                  />
-                  <Input
-                    isRequired
-                    label="Amount"
-                    name="transaction_amount"
-                    placeholder="Enter your transaction Amount"
-                    color={isInvalid ? "danger" : ""}
-                    variant="bordered"
-                    isInvalid={isInvalid}
-                    onValueChange={setTransactionAmount}
-                  />
-                  <Button color="primary" type="submit">
-                    Submit
-                  </Button>
-                  <Button color="primary" onPress={expand}>
-                    Expand
-                  </Button>
-                  <Button color="default" onPress={onClose}>
-                    Cancel
-                  </Button>
-                </Form>
-              </ModalBody>
-              <ModalFooter />
-            </>
-          )}
-        </ModalContent>
+        opened={opened}
+        onClose={close}
+        size={expanded ? "xl" : "md"}
+        title="Add Transaction"
+        centered
+      >
+        <form onSubmit={onSubmit}>
+          <Stack>
+            <TextInput
+              label="Transaction Name"
+              placeholder="Enter your transaction name"
+              required
+              value={transactionName}
+              onChange={(event) => setTransactionName(event.currentTarget.value)}
+            />
+            <NumberInput
+              label="Amount"
+              placeholder="Enter your transaction amount"
+              required
+              value={transactionAmount}
+              onChange={setTransactionAmount}
+              error={isInvalidAmount ? "Enter a valid amount" : null}
+              decimalScale={2}
+              allowNegative={false}
+            />
+            <Select
+              label="Category"
+              value={transactionCategory}
+              onChange={(value) => setTransactionCategory(value || "other")}
+              data={[
+                { value: "other", label: "Other" },
+                { value: "food", label: "Food" },
+                { value: "housing", label: "Housing" },
+                { value: "transport", label: "Transport" },
+              ]}
+            />
+            <Group justify="space-between">
+              <Button type="button" variant="outline" onClick={() => setExpanded((prev) => !prev)}>
+                {expanded ? "Compact" : "Expand"}
+              </Button>
+              <Group>
+                <Button type="button" variant="default" onClick={close}>
+                  Cancel
+                </Button>
+                <Button type="submit">Submit</Button>
+              </Group>
+            </Group>
+          </Stack>
+        </form>
       </Modal>
     </>
   );
