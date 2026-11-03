@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Checkbox, Group, Stack, TextInput, Tooltip } from "@mantine/core";
+import { Button, Checkbox, Group, NumberInput, Stack, TextInput, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useNavigate } from "react-router";
 import axiosInstance from "../../api/axios";
@@ -65,7 +65,7 @@ const UserAccountForm = ({
   };
 
   return (
-    <form className="w-full" onSubmit={onSubmit}>
+    <form onSubmit={onSubmit}>
       <Stack maw={420}>
         <TextInput required label="Username" placeholder="Enter your username" value={username} readOnly />
 
@@ -73,12 +73,14 @@ const UserAccountForm = ({
           <TextInput required readOnly label="Email" placeholder="Enter your email" type="email" value={email} />
         </Tooltip>
 
-        <TextInput
+        <NumberInput
           label="Monthly Budget"
           placeholder="Enter your monthly budget"
-          type="number"
+          prefix="$"
+          decimalScale={2}
+          allowNegative={false}
           value={monthlyBudget}
-          onChange={(event) => setMonthlyBudget(event.currentTarget.value)}
+          onChange={setMonthlyBudget}
         />
 
         <Checkbox
@@ -89,7 +91,14 @@ const UserAccountForm = ({
 
         <Group>
           <Button type="submit">Submit</Button>
-          <Button type="reset" variant="default">
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => {
+              setMonthlyBudget("");
+              setIsSelected(false);
+            }}
+          >
             Reset
           </Button>
         </Group>

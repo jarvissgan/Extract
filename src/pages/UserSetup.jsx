@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Loader, Text } from "@mantine/core";
+import { Box, Loader, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useNavigate } from "react-router";
 import UserAccountForm from "../components/UserAccountForm";
@@ -59,7 +59,7 @@ const UserSetup = () => {
   }
 
   return (
-    <div>
+    <Box p="xl">
       <Text fw={600} mb="sm">
         Finish your account setup
       </Text>
@@ -70,7 +70,7 @@ const UserSetup = () => {
         accountStatus="active"
         firstTime
       />
-    </div>
+    </Box>
   );
 };
 

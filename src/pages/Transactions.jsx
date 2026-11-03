@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Card, Divider, Loader, Table, Text } from "@mantine/core";
+import { Box, Card, Divider, Loader, SimpleGrid, Table, Text, Title } from "@mantine/core";
 import { useNavigate, useParams } from "react-router";
 import axiosInstance from "../../api/axios";
 
@@ -58,9 +58,9 @@ const Transactions = () => {
   }
 
   return (
-    <div className="w-full h-full p-5 sm:p-10">
-      <Text>Transactions</Text>
-      <div className="grid grid-flow-row sm:grid-flow-col grid-rows-1 grid-cols-1 sm:grid-cols-3 sm:grid-rows-4 gap-4 sm:gap-6 h-1/4 sm:h-1/6">
+    <Box p={{ base: "md", sm: "xl" }}>
+      <Title order={3} mb="md">Transactions</Title>
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={{ base: "md", sm: "lg" }}>
         <Card withBorder>
           <Text>Spending For {currentMonth}</Text>
           <Text>${currentMonthlySpending}</Text>
@@ -71,7 +71,7 @@ const Transactions = () => {
         <Card withBorder>
           <Text>Insights</Text>
         </Card>
-      </div>
+      </SimpleGrid>
       <Divider my="md" />
       {userTransactions.length ? (
         <Table striped highlightOnHover withTableBorder>
@@ -86,7 +86,7 @@ const Transactions = () => {
             {userTransactions.map((item) => (
               <Table.Tr
                 key={item.transaction_uuid}
-                className="cursor-pointer"
+                style={{ cursor: "pointer" }}
                 onClick={() =>
                   navigate(`/transactions/${sessionStorage.getItem("sqid")}/${item.transaction_uuid}`)
                 }
@@ -101,7 +101,7 @@ const Transactions = () => {
       ) : (
         <Text>No data available.</Text>
       )}
-    </div>
+    </Box>
   );
 };
 

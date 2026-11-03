@@ -1,8 +1,10 @@
+import { Box, Title } from "@mantine/core";
+
 const Landing = () => {
   return (
-    <div>
-      <p>Landing Page</p>
-    </div>
+    <Box p="xl">
+      <Title order={2}>Landing Page</Title>
+    </Box>
   );
 };
 

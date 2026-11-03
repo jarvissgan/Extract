@@ -1,5 +1,5 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { Button } from "@mantine/core";
+import { Button, Stack, Text, Title } from "@mantine/core";
 import { useNavigate } from "react-router";
 
 //404 not found
@@ -18,8 +18,8 @@ const FourOFour = () => {
   };
 
   return (
-    <div>
-      <p>404 link not found</p>
+    <Stack p="xl" align="flex-start">
+      <Title order={3}>404 link not found</Title>
       {sessionStorage.getItem("sqid") && isAuthenticated ? (
         <Button
           onClick={() =>
@@ -28,14 +28,14 @@ const FourOFour = () => {
           Go Back to home
         </Button>
       ) : (
-        <div>
-          <p>You are no longer authenticated. Please reauthenticate!</p>
+        <Stack align="flex-start">
+          <Text>You are no longer authenticated. Please reauthenticate!</Text>
           <Button onClick={logoutUser}>
             Go Back to landing page
           </Button>
-        </div>
+        </Stack>
       )}
-    </div>
+    </Stack>
   );
 };
 

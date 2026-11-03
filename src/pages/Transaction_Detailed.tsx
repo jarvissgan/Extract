@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axios";
 import { useNavigate, useParams } from "react-router";
-import { Button, Divider, Textarea, TextInput } from "@mantine/core";
+import { Box, Button, Divider, Group, NumberInput, Select, Stack, Textarea, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 
 const Transaction_Detailed = () => {
-  const [transactionAmount, setTransactionAmount] = useState(0);
+  const [transactionAmount, setTransactionAmount] = useState<number | string>(0);
   const [transactionName, setTransactionName] = useState("");
   const [transactionCategory, setTransactionCategory] = useState("other");
   const [editFlag, setEditflag] = useState(false);
@@ -44,7 +44,7 @@ const Transaction_Detailed = () => {
     try {
       const res = await axiosInstance.put(`/transaction/${transaction_uuid}`, {
         transaction_name: transactionName,
-        transaction_amount: transactionAmount,
+        transaction_amount: Number(transactionAmount),
         transaction_details: {
           category: transactionCategory,
           transaction_note: transactionNote,
@@ -81,18 +81,18 @@ const Transaction_Detailed = () => {
   };
 
   return (
-    <div className="flex flex-col w-full h-full p-10">
-      <div className="flex flex-row w-full justify-between items-center">
-        <div className="flex flex-row items-center gap-2">
+    <Box p="xl">
+      <Group justify="space-between" mb="md">
+        <Group gap="sm">
           <Button onClick={() => navigate(-1)}>Back</Button>
-          <p>Transaction Details</p>
-        </div>
+          <Title order={3}>Transaction Details</Title>
+        </Group>
         <Button onClick={() => setEditflag(!editFlag)}>{editFlag ? "Stop editing" : "Edit"}</Button>
-      </div>
+      </Group>
 
-      <Divider />
-      <div className="flex justify-between h-full pt-5 ">
-        <form className="w-full h-full space-y-4" onSubmit={updateTransaction}>
+      <Divider mb="md" />
+      <form onSubmit={updateTransaction}>
+        <Stack>
           <TextInput
             required
             autoFocus
@@ -103,15 +103,28 @@ const Transaction_Detailed = () => {
             onChange={(e) => setTransactionName(e.currentTarget.value)}
             value={transactionName}
           />
-          <TextInput
+          <NumberInput
             required
-            type="number"
             withAsterisk
             readOnly={!editFlag}
             label="Amount"
             placeholder="Enter transaction amount"
-            onChange={(e) => setTransactionAmount(e.currentTarget.valueAsNumber)}
+            decimalScale={2}
+            allowNegative={false}
+            onChange={setTransactionAmount}
             value={transactionAmount}
+          />
+          <Select
+            readOnly={!editFlag}
+            label="Category"
+            value={transactionCategory}
+            onChange={(value) => setTransactionCategory(value || "other")}
+            data={[
+              { value: "other", label: "Other" },
+              { value: "food", label: "Food" },
+              { value: "housing", label: "Housing" },
+              { value: "transport", label: "Transport" },
+            ]}
           />
           <Textarea
             readOnly={!editFlag}
@@ -119,12 +132,14 @@ const Transaction_Detailed = () => {
             onChange={(e) => setTransactionNote(e.currentTarget.value)}
             label="Transaction Description"
           />
-          <Button className="justify-end" type="submit" disabled={!editFlag}>
-            Update Transaction
-          </Button>
-        </form>
-      </div>
-    </div>
+          <Group justify="flex-end">
+            <Button type="submit" disabled={!editFlag}>
+              Update Transaction
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Box>
   );
 };
 

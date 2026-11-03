@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Card, Loader, Table, Text } from "@mantine/core";
+import { Box, Card, Loader, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { useParams } from "react-router";
 import axiosInstance from "../../api/axios";
 
@@ -83,9 +83,9 @@ const Home = () => {
   ));
 
   return (
-    <div className="w-full h-full flex flex-col p-5 md:p-10">
-      <Text>Hello, {user?.name}</Text>
-      <div className="grid grid-flow-row md:grid-flow-col grid-rows-2 grid-cols-1 md:grid-cols-3 md:grid-rows-4 gap-4 md:gap-6">
+    <Stack p={{ base: "md", md: "xl" }} gap="lg">
+      <Title order={3}>Hello, {user?.name}</Title>
+      <SimpleGrid cols={{ base: 1, md: 3 }} spacing={{ base: "md", md: "lg" }}>
         <Card withBorder>
           <Text>Spending For {currentMonth}</Text>
           <Text>${currentMonthlySpending}</Text>
@@ -99,8 +99,8 @@ const Home = () => {
         <Card withBorder>
           <Text>Summary</Text>
         </Card>
-      </div>
-      <div className="flex-1 pt-5 md:pt-10 h-full">
+      </SimpleGrid>
+      <Box>
         <Table striped highlightOnHover withTableBorder>
           <Table.Thead>
             <Table.Tr>
@@ -111,8 +111,8 @@ const Home = () => {
           </Table.Thead>
           <Table.Tbody>{rows.length ? rows : <Table.Tr><Table.Td colSpan={3}>No data to display for the month.</Table.Td></Table.Tr>}</Table.Tbody>
         </Table>
-      </div>
-    </div>
+      </Box>
+    </Stack>
   );
 };
 
