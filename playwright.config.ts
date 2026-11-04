@@ -17,7 +17,7 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /mobile\.spec\.ts/ },
-    // phone-sized with touch; see CLAUDE.md for the mobile rules these tests guard
+    // phone-sized with touch; see mobile.md for the mobile rules these tests guard
     { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec\.ts/ },
   ],
   webServer: {

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Runs in the "mobile" Playwright project (phone-sized, touch). Guards the rules in CLAUDE.md:
+// Runs in the "mobile" Playwright project (phone-sized, touch). Guards the rules in mobile.md:
 // no sideways scrolling, bottom navigation, big enough tap targets, inputs that don't zoom on iOS.
 
 const devLogin = async (page: Page, email: string) => {

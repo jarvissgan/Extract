@@ -14,7 +14,7 @@ Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and
   "Add another", undo, and shortcuts (N = add, / = quick add); a floating + button on phones
 - Download all your data as JSON, or delete your account
 
-Works on phones: bottom tab bar, full-screen forms, lists instead of tables, and it can be added to the home screen as an app. See `CLAUDE.md` for the mobile-first rules every change follows.
+Works on phones: bottom tab bar, full-screen forms, lists instead of tables, and it can be added to the home screen as an app. See [`mobile.md`](mobile.md) for the mobile-first rules every change follows.
 
 ## Stack
 - Frontend: React 19, Vite 6, Mantine 8, TypeScript

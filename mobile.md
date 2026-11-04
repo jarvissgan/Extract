@@ -1,4 +1,4 @@
-# Extract: notes for contributors (and Claude)
+# Extract: mobile-first rules and project conventions
 
 Personal expense tracker. React 19 + Vite + Mantine 8 (TypeScript) frontend in `src/`,
 Express API in `api/`, MariaDB with SQL migrations in `db/migrations/`, validation shared
