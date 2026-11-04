@@ -230,6 +230,69 @@ test("links an account created before auth_sub existed on next login", async () 
   await query("DELETE FROM users WHERE email = ?", [legacy]);
 });
 
+test("records income as well as expenses", async () => {
+  const created = await api("POST", "/transaction", {
+    as: alice,
+    body: newTransaction({ transaction_type: "income", transaction_name: "Salary", transaction_amount: 3000, transaction_details: { category: "income" } }),
+  });
+  assert.equal(created.status, 200);
+  const fetched = await api("GET", `/transaction/${created.body.transaction_uuid}`, { as: alice });
+  assert.equal(fetched.body.transaction_type, "income");
+
+  const bad = await api("POST", "/transaction", { as: alice, body: newTransaction({ transaction_type: "refund" }) });
+  assert.equal(bad.status, 400);
+
+  const defaulted = await api("POST", "/transaction", { as: alice, body: newTransaction() });
+  assert.equal((await api("GET", `/transaction/${defaulted.body.transaction_uuid}`, { as: alice })).body.transaction_type, "expense");
+
+  await api("DELETE", `/transaction/${created.body.transaction_uuid}`, { as: alice });
+  await api("DELETE", `/transaction/${defaulted.body.transaction_uuid}`, { as: alice });
+});
+
+test("bulk re-categorizes and deletes only the user's own transactions", async () => {
+  const ids = [];
+  for (const name of ["Bulk 1", "Bulk 2"]) {
+    ids.push((await api("POST", "/transaction", { as: alice, body: newTransaction({ transaction_name: name }) })).body.transaction_uuid);
+  }
+  const bobsId = (await api("POST", "/transaction", { as: bob, body: newTransaction({ transaction_name: "Bob's" }) })).body.transaction_uuid;
+
+  const recat = await api("POST", "/transaction/bulk", {
+    as: alice,
+    body: { action: "categorize", uuids: [...ids, bobsId], category: "transport" },
+  });
+  assert.equal(recat.body.affected, 2);
+  const one = await api("GET", `/transaction/${ids[0]}`, { as: alice });
+  const details = typeof one.body.transaction_details === "string" ? JSON.parse(one.body.transaction_details) : one.body.transaction_details;
+  assert.equal(details.category, "transport");
+  assert.equal(details.transaction_note, "");
+
+  const unknown = await api("POST", "/transaction/bulk", { as: alice, body: { action: "categorize", uuids: ids, category: "nope" } });
+  assert.equal(unknown.status, 400);
+
+  const del = await api("POST", "/transaction/bulk", { as: alice, body: { action: "delete", uuids: [...ids, bobsId] } });
+  assert.equal(del.body.affected, 2);
+  assert.equal((await api("GET", `/transaction/${bobsId}`, { as: bob })).status, 200);
+  await api("DELETE", `/transaction/${bobsId}`, { as: bob });
+});
+
+test("saves category budgets and categorization rules in preferences", async () => {
+  const me = (await api("GET", "/user", { as: alice })).body;
+  const prefs = typeof me.preference_json === "string" ? JSON.parse(me.preference_json) : me.preference_json;
+  const ok = await api("PUT", `/user/${state.aliceSqid}`, {
+    as: alice,
+    body: {
+      username: me.username,
+      preference_json: { ...prefs, budgets: { monthly: 1000, categories: { food: 300 } }, rules: [{ pattern: "grab", category: "transport" }] },
+    },
+  });
+  assert.equal(ok.status, 200);
+  const bad = await api("PUT", `/user/${state.aliceSqid}`, {
+    as: alice,
+    body: { username: me.username, preference_json: { rules: [{ pattern: "x", category: "food" }] } },
+  });
+  assert.equal(bad.status, 400);
+});
+
 test("users cannot see or change other users' transactions", async () => {
   const tx = state.aliceTx;
   assert.equal((await api("GET", `/transaction/user/${state.aliceSqid}`, { as: bob })).status, 403);

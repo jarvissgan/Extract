@@ -106,8 +106,8 @@ test("transactions can be searched, exported and imported", async ({ page }) => 
   const file = await (await download).path();
   const { readFile } = await import("node:fs/promises");
   const exported = await readFile(file, "utf8");
-  expect(exported.split("\n")[0]).toBe("date,name,amount,category,note");
-  expect(exported).toContain('"Train, return",3.20,Transport,commute');
+  expect(exported.split("\n")[0]).toBe("date,name,amount,type,category,note");
+  expect(exported).toContain('"Train, return",3.20,expense,Transport,commute');
 });
 
 test("bad CSV rows are reported and nothing is imported", async ({ page }) => {
@@ -129,4 +129,66 @@ test("another user's sqid in the URL redirects to your own account", async ({ pa
 
   await page.goto("/home/NotMine123");
   await expect(page).toHaveURL(new RegExp(`/home/${own}`));
+});
+
+const signUp = async (page: Page, name: string, budget?: string) => {
+  await devLogin(page, uniqueEmail(name));
+  if (budget) await page.getByLabel("Monthly budget").fill(budget);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/home\/\w+/);
+};
+
+const addTransaction = async (page: Page, name: string, amount: string, type: "Expense" | "Income" = "Expense") => {
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add transaction" });
+  if (type === "Income") await dialog.getByText("Income", { exact: true }).click();
+  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByLabel("Amount").fill(amount);
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(dialog).toBeHidden();
+};
+
+test("income shows on the dashboard, with net and budget alerts, and in reports", async ({ page }) => {
+  await signUp(page, "income", "100");
+  await addTransaction(page, "Salary", "3000", "Income");
+  await addTransaction(page, "Groceries", "90");
+
+  await expect(page.getByText("+$3,000.00").first()).toBeVisible();
+  await expect(page.getByText("Net +$2,910.00")).toBeVisible();
+  await expect(page.getByText("Close to your budget")).toBeVisible();
+
+  await addTransaction(page, "Dinner", "20");
+  await expect(page.getByText("Over budget")).toBeVisible();
+
+  await page.getByText("Reports", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+  await expect(page.getByText("$2,890.00")).toBeVisible();
+  await expect(page.getByText("96% of income")).toBeVisible();
+});
+
+test("rules categorize new transactions and bulk actions update many at once", async ({ page }) => {
+  await signUp(page, "rules");
+  await page.getByText("Settings", { exact: true }).click();
+  const ruleForm = page.locator("form", { has: page.getByLabel("Name contains") });
+  await ruleForm.getByLabel("Name contains").fill("grab");
+  await ruleForm.getByRole("textbox", { name: "Category" }).click();
+  await page.getByRole("option", { name: "Transport" }).click();
+  await page.getByRole("button", { name: "Add rule" }).click();
+  await expect(page.getByRole("row", { name: /grab/ })).toBeVisible();
+
+  await addTransaction(page, "GRAB to office", "12");
+  await addTransaction(page, "Lunch", "8");
+  await page.getByText("Transactions", { exact: true }).click();
+  await expect(page.getByRole("row", { name: /GRAB to office/ }).getByText("Transport")).toBeVisible();
+
+  await page.getByRole("checkbox", { name: "Select all" }).check();
+  await expect(page.getByText("2 selected")).toBeVisible();
+  await page.getByRole("textbox", { name: "Move to category" }).click();
+  await page.getByRole("option", { name: "Food" }).click();
+  await expect(page.locator("tbody").getByText("Food")).toHaveCount(2);
+
+  await page.getByRole("checkbox", { name: "Select Lunch" }).check();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(1);
 });

@@ -13,7 +13,7 @@ interface Props {
 }
 
 const ImportModal = ({ opened, onClose }: Props) => {
-  const { categories, notifyTransactionsChanged } = useCurrentUser();
+  const { categories, rules, notifyTransactionsChanged } = useCurrentUser();
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -32,7 +32,7 @@ const ImportModal = ({ opened, onClose }: Props) => {
     setErrors([]);
     if (!picked) return;
 
-    const result = csvToImportRows(await picked.text(), categories);
+    const result = csvToImportRows(await picked.text(), categories, rules);
     const problems = [...result.errors];
     if (result.rows.length) {
       const checked = importSchema.safeParse({ transactions: result.rows });
@@ -65,7 +65,8 @@ const ImportModal = ({ opened, onClose }: Props) => {
       <Stack>
         <Text size="sm">
           The first row must be a header with <Code>date</Code>, <Code>name</Code> and <Code>amount</Code>, and
-          optionally <Code>category</Code> and <Code>note</Code>. Dates like <Code>2026-11-04</Code> or{" "}
+          optionally <Code>type</Code> (expense or income), <Code>category</Code> and <Code>note</Code>. Blank
+          categories are filled in from your rules. Dates like <Code>2026-11-04</Code> or{" "}
           <Code>4/11/2026</Code> work. Up to {MAX_IMPORT_ROWS} rows at a time. Files from <b>Export CSV</b> can be
           imported as-is.
         </Text>

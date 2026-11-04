@@ -10,7 +10,7 @@ import {
 import { useAuth0 } from "@auth0/auth0-react";
 import api, { setAccessTokenGetter } from "../lib/api";
 import { currencySymbol, makeMoneyFormatter } from "../lib/transactions";
-import { parseJson, type CategoryOption, type UserPreferences, type UserRow } from "../lib/types";
+import { parseJson, type CategoryOption, type CategoryRule, type UserPreferences, type UserRow } from "../lib/types";
 import { userCategories } from "../../shared/schemas.js";
 
 type Status = "loading" | "signedOut" | "needsSetup" | "ready" | "error";
@@ -21,6 +21,8 @@ interface UserContextValue {
   sqid: string | null;
   preferences: UserPreferences;
   monthlyBudget: number | null;
+  categoryBudgets: Record<string, number>;
+  rules: CategoryRule[];
   categories: CategoryOption[];
   currency: string;
   currencySymbol: string;
@@ -86,6 +88,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       sqid: user?.user_sqid ?? null,
       preferences,
       monthlyBudget: monthly === undefined || monthly === "" || !Number.isFinite(Number(monthly)) ? null : Number(monthly),
+      categoryBudgets: preferences.budgets?.categories ?? {},
+      // ignore rules pointing at categories that were removed since
+      rules: (preferences.rules ?? []).filter((r) =>
+        userCategories(preferences).some((c: CategoryOption) => c.value === r.category)
+      ),
       categories: userCategories(preferences),
       currency,
       currencySymbol: currencySymbol(currency),

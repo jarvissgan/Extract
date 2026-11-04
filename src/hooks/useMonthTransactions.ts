@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import dayjs, { type Dayjs } from "dayjs";
 import { useSearchParams } from "react-router";
 import api from "../lib/api";
-import { toTransaction } from "../lib/transactions";
+import { expensesOf, incomeOf, sumAmounts, toTransaction } from "../lib/transactions";
 import type { Transaction, TransactionRow } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
 
@@ -23,16 +23,16 @@ export const useSelectedMonth = () => {
   return { month, setMonth };
 };
 
-// Loads the signed-in user's transactions for one month of the browser's local time.
-export const useMonthTransactions = (month: Dayjs) => {
+// Loads the signed-in user's transactions between two local-time instants.
+export const useRangeTransactions = (start: Dayjs, end: Dayjs) => {
   const { sqid, transactionsVersion } = useCurrentUser();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // exact instants, so the server (which stores UTC) filters on the user's local month
-  const startDate = month.startOf("month").toISOString();
-  const endDate = month.endOf("month").toISOString();
+  // exact instants, so the server (which stores UTC) filters on the user's local time
+  const startDate = start.toISOString();
+  const endDate = end.toISOString();
 
   useEffect(() => {
     if (!sqid) return;
@@ -58,7 +58,11 @@ export const useMonthTransactions = (month: Dayjs) => {
     };
   }, [sqid, startDate, endDate, transactionsVersion]);
 
-  const total = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const spent = sumAmounts(expensesOf(transactions));
+  const income = sumAmounts(incomeOf(transactions));
 
-  return { transactions, total, loading, error };
+  return { transactions, spent, income, loading, error };
 };
+
+export const useMonthTransactions = (month: Dayjs) =>
+  useRangeTransactions(month.startOf("month"), month.endOf("month"));

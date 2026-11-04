@@ -1,5 +1,6 @@
 import { Button, NavLink, Stack, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
+  IconChartBar,
   IconHome,
   IconListDetails,
   IconLogin,
@@ -30,6 +31,7 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
     ? [
         { label: "Home", icon: IconHome, to: `/home/${sqid}` },
         { label: "Transactions", icon: IconListDetails, to: `/transactions/${sqid}` },
+        { label: "Reports", icon: IconChartBar, to: "/reports" },
         { label: "Settings", icon: IconSettings, to: "/settings" },
       ]
     : [];

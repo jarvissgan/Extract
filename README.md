@@ -2,7 +2,13 @@
 
 Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and MariaDB.
 
-**Features:** monthly dashboard with budget tracking and charts · transactions with search, category filter and sorting · custom categories · monthly recurring transactions · CSV import and export · per-user currency.
+**Features:**
+- Dashboard: spending, income and net for any month, comparison with last month, overall and per-category budgets with alerts
+- Transactions: expenses and income, search, filters, sorting, bulk re-categorize and delete, CSV import and export
+- Reports: 3/6/12-month income vs spending, spending by category over time, savings rate
+- Categorization rules ("name contains grab → Transport"), offered automatically when you correct a category
+- Custom categories, monthly recurring bills and salary, per-user currency
+- Download all your data as JSON, or delete your account
 
 ## Stack
 - Frontend: React 19, Vite 6, Mantine 8, TypeScript
@@ -73,4 +79,4 @@ curl -H "Authorization: Bearer dev:dev@extract.local" http://localhost:3000/api/
 Dates are stored in UTC. The browser sends exact start/end instants for "this month", so months follow the user's local time zone whatever the server's time zone is. Recurring transactions are dated 12:00 UTC on their day.
 
 ## CSV import format
-A header row with `date`, `name`, `amount`, and optionally `category` (name or key) and `note`, in any order. Dates like `2026-11-04`, `2026-11-04 18:30` or `4/11/2026` work. Files from **Export CSV** can be imported as they are. Every row is checked before anything is saved.
+A header row with `date`, `name`, `amount`, and optionally `type` (`expense` or `income`), `category` (name or key) and `note`, in any order. Blank categories are filled in from your rules. Dates like `2026-11-04`, `2026-11-04 18:30` or `4/11/2026` work. Files from **Export CSV** can be imported as they are. Every row is checked before anything is saved.

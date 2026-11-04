@@ -12,8 +12,11 @@ export interface TransactionDetails {
   transaction_note?: string;
 }
 
+export type TransactionType = "expense" | "income";
+
 export interface TransactionRow {
   transaction_uuid: string;
+  transaction_type?: TransactionType;
   user_id: number;
   transaction_name: string;
   transaction_amount: number | string;
@@ -25,6 +28,7 @@ export interface TransactionRow {
 
 export interface Transaction {
   uuid: string;
+  type: TransactionType;
   name: string;
   amount: number;
   category: string;
@@ -34,8 +38,14 @@ export interface Transaction {
   recurring: boolean;
 }
 
+export interface CategoryRule {
+  pattern: string;
+  category: string;
+}
+
 export interface UserPreferences {
-  budgets?: { monthly?: number | "" };
+  budgets?: { monthly?: number | ""; categories?: Record<string, number> };
+  rules?: CategoryRule[];
   notifications?: { email?: boolean };
   currency?: string;
   categories?: CategoryOption[];
@@ -52,6 +62,7 @@ export interface UserRow {
 
 export interface RecurringRule {
   recurring_uuid: string;
+  transaction_type: TransactionType;
   name: string;
   amount: number;
   category: string;

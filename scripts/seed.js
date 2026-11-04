@@ -48,12 +48,13 @@ const random = () => {
 const pick = (list) => list[Math.floor(random() * list.length)];
 const between = (min, max) => Math.round((min + random() * (max - min)) * 100) / 100;
 
-// fixed monthly bills, created as recurring rules: [name, amount, category, day]
+// fixed monthly bills and salary, created as recurring rules: [name, amount, category, day, type]
 const RECURRING = [
-  ["Rent", 1200, "housing", 1],
-  ["Phone plan", 30, "other", 5],
-  ["Internet", 49.9, "housing", 15],
-  ["Streaming subscription", 15.99, "other", 20],
+  ["Salary", 3200, "income", 25, "income"],
+  ["Rent", 1200, "housing", 1, "expense"],
+  ["Phone plan", 30, "other", 5, "expense"],
+  ["Internet", 49.9, "housing", 15, "expense"],
+  ["Streaming subscription", 15.99, "other", 20, "expense"],
 ];
 
 // [name, min, max, weight]
@@ -135,7 +136,12 @@ try {
   for (const email of emails) {
     const username = email.split("@")[0].replace(/^./, (c) => c.toUpperCase());
     const prefs = JSON.stringify({
-      budgets: { monthly: budget },
+      budgets: { monthly: budget, categories: { food: Math.round(budget * 0.25), transport: Math.round(budget * 0.08) } },
+      rules: [
+        { pattern: "grab", category: "transport" },
+        { pattern: "fairprice", category: "food" },
+        { pattern: "netflix", category: "other" },
+      ],
       notifications: { email: false },
       currency: "USD",
       categories: [{ value: "travel", label: "Travel", color: "grape.6" }],
@@ -172,8 +178,8 @@ try {
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
     const startPeriod = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`;
     await db.query(
-      "INSERT INTO recurring_transaction (recurring_uuid, user_id, name, amount, category, note, day_of_month, active, start_period, created_timestamp) VALUES ?",
-      [RECURRING.map(([name, amount, category, day]) => [randomUUID(), userId, name, amount, category, "Monthly", day, true, startPeriod, start])]
+      "INSERT INTO recurring_transaction (recurring_uuid, user_id, transaction_type, name, amount, category, note, day_of_month, active, start_period, created_timestamp) VALUES ?",
+      [RECURRING.map(([name, amount, category, day, type]) => [randomUUID(), userId, type, name, amount, category, "Monthly", day, true, startPeriod, start])]
     );
     await generateDueRecurring(db.query, userId, now);
 

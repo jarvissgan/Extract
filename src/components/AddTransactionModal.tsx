@@ -5,6 +5,7 @@ import {
   Group,
   Modal,
   NumberInput,
+  SegmentedControl,
   Select,
   Stack,
   Textarea,
@@ -17,7 +18,8 @@ import { IconPlus } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import api, { errorStatus } from "../lib/api";
 import { useCurrentUser } from "../context/UserContext";
-import { fieldErrors, transactionSchema } from "../../shared/schemas.js";
+import { categoryFromRules, fieldErrors, transactionSchema } from "../../shared/schemas.js";
+import type { TransactionType } from "../lib/types";
 
 const today = () => dayjs().format("YYYY-MM-DD");
 
@@ -28,7 +30,10 @@ const toIsoDate = (day: string) => {
 };
 
 const AddTransactionModal = () => {
-  const { sqid, categories, currencySymbol, notifyTransactionsChanged } = useCurrentUser();
+  const { sqid, categories, rules, currencySymbol, notifyTransactionsChanged } = useCurrentUser();
+  const [type, setType] = useState<TransactionType>("expense");
+  // once the user picks a category themselves, rules stop changing it
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [opened, { open, close }] = useDisclosure(false);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState<number | string>("");
@@ -39,7 +44,22 @@ const AddTransactionModal = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const onNameChange = (value: string) => {
+    setName(value);
+    if (!categoryTouched) {
+      setCategory(categoryFromRules(value, rules) ?? (type === "income" ? "income" : "other"));
+    }
+  };
+
+  const onTypeChange = (value: string) => {
+    const next = value as TransactionType;
+    setType(next);
+    if (!categoryTouched) setCategory(categoryFromRules(name, rules) ?? (next === "income" ? "income" : "other"));
+  };
+
   const reset = () => {
+    setType("expense");
+    setCategoryTouched(false);
     setName("");
     setAmount("");
     setCategory("other");
@@ -53,6 +73,7 @@ const AddTransactionModal = () => {
     event.preventDefault();
 
     const parsed = transactionSchema.safeParse({
+      transaction_type: type,
       transaction_name: name,
       transaction_amount: amount,
       transaction_details: { category, transaction_note: note },
@@ -70,6 +91,7 @@ const AddTransactionModal = () => {
       if (repeat) {
         // this month's entry was just added, so the rule starts next month
         await api.post("/recurring", {
+          transaction_type: type,
           name: parsed.data.transaction_name,
           amount: parsed.data.transaction_amount,
           category,
@@ -80,7 +102,9 @@ const AddTransactionModal = () => {
       }
       notifications.show({
         title: "Success",
-        message: repeat ? "Transaction added and set to repeat monthly." : "Transaction added.",
+        message: repeat
+          ? `${type === "income" ? "Income" : "Transaction"} added and set to repeat monthly.`
+          : `${type === "income" ? "Income" : "Transaction"} added.`,
         color: "green",
       });
       notifyTransactionsChanged();
@@ -109,14 +133,23 @@ const AddTransactionModal = () => {
       <Modal opened={opened} onClose={close} title="Add transaction" centered>
         <form onSubmit={onSubmit} noValidate>
           <Stack>
+            <SegmentedControl
+              aria-label="Type"
+              value={type}
+              onChange={onTypeChange}
+              data={[
+                { value: "expense", label: "Expense" },
+                { value: "income", label: "Income" },
+              ]}
+            />
             <TextInput
               label="Name"
-              placeholder="e.g. Groceries"
+              placeholder={type === "income" ? "e.g. Salary" : "e.g. Groceries"}
               required
               data-autofocus
               value={name}
               error={errors.transaction_name}
-              onChange={(event) => setName(event.currentTarget.value)}
+              onChange={(event) => onNameChange(event.currentTarget.value)}
             />
             <NumberInput
               label="Amount"
@@ -134,7 +167,10 @@ const AddTransactionModal = () => {
               <Select
                 label="Category"
                 value={category}
-                onChange={(value) => setCategory(value || "other")}
+                onChange={(value) => {
+                  setCategory(value || "other");
+                  setCategoryTouched(true);
+                }}
                 data={categories.map(({ value, label }) => ({ value, label }))}
                 allowDeselect={false}
                 error={errors["transaction_details.category"]}

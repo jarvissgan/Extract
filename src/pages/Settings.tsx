@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   ActionIcon,
+  Alert,
   Badge,
   Button,
   Checkbox,
@@ -9,6 +10,7 @@ import {
   NumberInput,
   Paper,
   Select,
+  SimpleGrid,
   Stack,
   Switch,
   Table,
@@ -19,10 +21,13 @@ import {
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useAuth0 } from "@auth0/auth0-react";
+import { IconDownload, IconPlus, IconTrash } from "@tabler/icons-react";
+import dayjs from "dayjs";
 import api from "../lib/api";
 import { findCategory } from "../lib/transactions";
-import { parseJson, type RecurringRule, type UserPreferences } from "../lib/types";
+import { parseJson, type RecurringRule, type TransactionRow, type TransactionType, type UserPreferences } from "../lib/types";
+import { downloadFile } from "../lib/csv";
 import { useCurrentUser } from "../context/UserContext";
 import {
   BUILTIN_CATEGORIES,
@@ -30,6 +35,7 @@ import {
   CURRENCIES,
   describeError,
   fieldErrors,
+  MAX_RULES,
   recurringSchema,
   userSchema,
 } from "../../shared/schemas.js";
@@ -90,7 +96,7 @@ const AccountSection = () => {
     const ok = await save({
       username,
       preferences: {
-        budgets: { monthly: budget === "" ? "" : Number(budget) },
+        budgets: { ...preferences.budgets, monthly: budget === "" ? "" : Number(budget) },
         currency: newCurrency,
         notifications: { email: emailNotifications },
       },
@@ -225,6 +231,7 @@ const CategoriesSection = () => {
 const RecurringSection = () => {
   const { categories, currencySymbol, formatMoney, notifyTransactionsChanged } = useCurrentUser();
   const [rules, setRules] = useState<RecurringRule[]>([]);
+  const [type, setType] = useState<TransactionType>("expense");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState<number | string>("");
   const [category, setCategory] = useState("other");
@@ -245,6 +252,7 @@ const RecurringSection = () => {
   const toBody = (r: RecurringRule, changes: Partial<RecurringRule> = {}) => {
     const merged = { ...r, ...changes };
     return {
+      transaction_type: merged.transaction_type,
       name: merged.name,
       amount: merged.amount,
       category: merged.category,
@@ -256,7 +264,7 @@ const RecurringSection = () => {
 
   const add = async (e: FormEvent) => {
     e.preventDefault();
-    const parsed = recurringSchema.safeParse({ name, amount, category, day_of_month: day });
+    const parsed = recurringSchema.safeParse({ transaction_type: type, name, amount, category, day_of_month: day });
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error));
       return;
@@ -296,7 +304,7 @@ const RecurringSection = () => {
   return (
     <Section
       title="Recurring transactions"
-      description="Added automatically every month on the chosen day (the last day of shorter months). Paused rules skip months while paused."
+      description="Bills, subscriptions and salary added automatically every month on the chosen day (the last day of shorter months). Paused rules skip months while paused."
     >
       {rules.length > 0 && (
         <Table.ScrollContainer minWidth={520} mb="md">
@@ -322,7 +330,10 @@ const RecurringSection = () => {
                         {c.label}
                       </Badge>
                     </Table.Td>
-                    <Table.Td ta="right">{formatMoney(Number(r.amount))}</Table.Td>
+                    <Table.Td ta="right" c={r.transaction_type === "income" ? "teal" : undefined}>
+                      {r.transaction_type === "income" ? "+" : ""}
+                      {formatMoney(Number(r.amount))}
+                    </Table.Td>
                     <Table.Td>{r.day_of_month}</Table.Td>
                     <Table.Td>
                       <Switch checked={!!r.active} onChange={() => toggle(r)} aria-label={`${r.name} active`} />
@@ -342,7 +353,22 @@ const RecurringSection = () => {
 
       <form onSubmit={add} noValidate>
         <Group align="flex-start" gap="sm">
-          <TextInput label="Name" placeholder="e.g. Rent" value={name} onChange={(e) => setName(e.currentTarget.value)} error={errors.name} w={180} />
+          <Select
+            label="Type"
+            data={[
+              { value: "expense", label: "Expense" },
+              { value: "income", label: "Income" },
+            ]}
+            value={type}
+            onChange={(v) => {
+              const next = (v as TransactionType) || "expense";
+              setType(next);
+              setCategory(next === "income" ? "income" : "other");
+            }}
+            allowDeselect={false}
+            w={110}
+          />
+          <TextInput label="Name" placeholder={type === "income" ? "e.g. Salary" : "e.g. Rent"} value={name} onChange={(e) => setName(e.currentTarget.value)} error={errors.name} w={180} />
           <NumberInput
             label="Amount"
             prefix={currencySymbol}
@@ -372,12 +398,225 @@ const RecurringSection = () => {
   );
 };
 
+const BudgetsSection = () => {
+  const { categories, categoryBudgets, preferences, currencySymbol } = useCurrentUser();
+  const save = useSaveAccount();
+  const spendingCategories = categories.filter((c) => c.value !== "income");
+  const [values, setValues] = useState<Record<string, number | string>>(() =>
+    Object.fromEntries(spendingCategories.map((c) => [c.value, categoryBudgets[c.value] ?? ""]))
+  );
+  const [saving, setSaving] = useState(false);
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const next = Object.fromEntries(
+      Object.entries(values)
+        .filter(([, v]) => v !== "" && Number(v) > 0)
+        .map(([k, v]) => [k, Number(v)])
+    );
+    setSaving(true);
+    const ok = await save({ preferences: { budgets: { ...preferences.budgets, categories: next } } });
+    setSaving(false);
+    if (ok) notifications.show({ message: "Category budgets saved.", color: "green" });
+  };
+
+  return (
+    <Section title="Category budgets" description="Optional monthly limits per category, shown on the dashboard. Leave blank for no limit.">
+      <form onSubmit={onSubmit}>
+        <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm" mb="md">
+          {spendingCategories.map((c) => (
+            <NumberInput
+              key={c.value}
+              label={c.label}
+              placeholder="No limit"
+              prefix={currencySymbol}
+              thousandSeparator=","
+              decimalScale={2}
+              allowNegative={false}
+              value={values[c.value] ?? ""}
+              onChange={(v) => setValues((prev) => ({ ...prev, [c.value]: v }))}
+            />
+          ))}
+        </SimpleGrid>
+        <Button type="submit" loading={saving}>
+          Save budgets
+        </Button>
+      </form>
+    </Section>
+  );
+};
+
+const RulesSection = () => {
+  const { categories, rules } = useCurrentUser();
+  const save = useSaveAccount();
+  const [pattern, setPattern] = useState("");
+  const [category, setCategory] = useState(categories[0]?.value ?? "other");
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    const clean = pattern.trim().toLowerCase();
+    if (clean.length < 2) return;
+    // newest first, so it wins over older rules that also match
+    if (await save({ preferences: { rules: [{ pattern: clean, category }, ...rules.filter((r) => r.pattern !== clean)] } })) {
+      setPattern("");
+    }
+  };
+
+  return (
+    <Section
+      title="Categorization rules"
+      description="When a transaction's name contains the text, it gets that category automatically, when adding or importing. The first matching rule wins. You'll also be offered a rule when you change a transaction's category."
+    >
+      {rules.length > 0 && (
+        <Table verticalSpacing="xs" mb="md">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Name contains</Table.Th>
+              <Table.Th>Category</Table.Th>
+              <Table.Th />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rules.map((r) => {
+              const c = findCategory(categories, r.category);
+              return (
+                <Table.Tr key={r.pattern}>
+                  <Table.Td>
+                    <Text ff="monospace" size="sm">
+                      {r.pattern}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge variant="light" color={c.color}>
+                      {c.label}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      aria-label={`Delete rule ${r.pattern}`}
+                      onClick={() => save({ preferences: { rules: rules.filter((x) => x.pattern !== r.pattern) } })}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      )}
+      <form onSubmit={add}>
+        <Group align="flex-end" gap="sm">
+          <TextInput label="Name contains" placeholder="e.g. grab" value={pattern} onChange={(e) => setPattern(e.currentTarget.value)} w={200} />
+          <Select
+            label="Category"
+            data={categories.map(({ value, label }) => ({ value, label }))}
+            value={category}
+            onChange={(v) => setCategory(v || "other")}
+            allowDeselect={false}
+            w={160}
+          />
+          <Button type="submit" leftSection={<IconPlus size={16} />} disabled={pattern.trim().length < 2 || rules.length >= MAX_RULES}>
+            Add rule
+          </Button>
+        </Group>
+      </form>
+    </Section>
+  );
+};
+
+const DataSection = () => {
+  const { user, sqid } = useCurrentUser();
+  const { logout } = useAuth0();
+  const [exporting, setExporting] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  const exportAll = async () => {
+    setExporting(true);
+    try {
+      const [account, transactions, recurring] = await Promise.all([
+        api.get("/user"),
+        api.get<TransactionRow[]>(`/transaction/user/${sqid}`),
+        api.get<RecurringRule[]>("/recurring"),
+      ]);
+      const data = {
+        exported_at: new Date().toISOString(),
+        account: account.data,
+        transactions: transactions.data,
+        recurring_transactions: recurring.data,
+      };
+      downloadFile(`extract-data-${dayjs().format("YYYY-MM-DD")}.json`, JSON.stringify(data, null, 2), "application/json");
+    } catch {
+      notifications.show({ message: "Couldn't export your data. Try again later.", color: "red" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const deleteAccount = () =>
+    modals.openConfirmModal({
+      title: "Delete your account",
+      centered: true,
+      children: (
+        <Text size="sm">
+          This permanently deletes your account, all transactions and recurring rules. Download your data first if you
+          want a copy.
+        </Text>
+      ),
+      labels: { confirm: "Delete everything", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await api.delete(`/user/${sqid}`);
+          notifications.show({ message: "Your account was deleted.", color: "green" });
+          logout({ logoutParams: { returnTo: window.location.origin } });
+        } catch {
+          notifications.show({ message: "Couldn't delete your account. Try again later.", color: "red" });
+        }
+      },
+    });
+
+  return (
+    <Section title="Your data" description="Download everything you've stored, or delete your account.">
+      <Stack gap="md" maw={480}>
+        <Group>
+          <Button variant="default" leftSection={<IconDownload size={16} />} onClick={exportAll} loading={exporting}>
+            Download all data (JSON)
+          </Button>
+        </Group>
+        <Alert color="red" variant="light" title="Delete account">
+          <Stack gap="xs">
+            <Text size="sm">Type your email to confirm.</Text>
+            <Group align="flex-end" gap="sm">
+              <TextInput
+                aria-label="Confirm email"
+                placeholder={user?.email}
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.currentTarget.value)}
+                w={260}
+              />
+              <Button color="red" disabled={confirmText.trim().toLowerCase() !== user?.email?.toLowerCase()} onClick={deleteAccount}>
+                Delete account
+              </Button>
+            </Group>
+          </Stack>
+        </Alert>
+      </Stack>
+    </Section>
+  );
+};
+
 const Settings = () => (
   <Stack p={{ base: "md", md: "xl" }} gap="lg" maw={900}>
     <Title order={2}>Settings</Title>
     <AccountSection />
+    <BudgetsSection />
     <CategoriesSection />
+    <RulesSection />
     <RecurringSection />
+    <DataSection />
   </Stack>
 );
 

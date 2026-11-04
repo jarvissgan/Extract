@@ -5,6 +5,9 @@ import {
   Group,
   Loader,
   MultiSelect,
+  Paper,
+  SegmentedControl,
+  Select,
   SimpleGrid,
   Stack,
   Text,
@@ -13,7 +16,10 @@ import {
 } from "@mantine/core";
 import { BarChart } from "@mantine/charts";
 import { useDisclosure } from "@mantine/hooks";
-import { IconDownload, IconSearch, IconUpload } from "@tabler/icons-react";
+import { modals } from "@mantine/modals";
+import { notifications } from "@mantine/notifications";
+import { IconDownload, IconSearch, IconTrash, IconUpload } from "@tabler/icons-react";
+import api from "../lib/api";
 import dayjs from "dayjs";
 import ImportModal from "../components/ImportModal";
 import MonthHeader from "../components/MonthHeader";
@@ -22,14 +28,16 @@ import TransactionTable from "../components/TransactionTable";
 import { useCurrentUser } from "../context/UserContext";
 import { useMonthTransactions, useSelectedMonth } from "../hooks/useMonthTransactions";
 import { downloadFile, transactionsToCsv } from "../lib/csv";
-import { findCategory } from "../lib/transactions";
+import { expensesOf, findCategory, incomeOf, sumAmounts } from "../lib/transactions";
 
 const Transactions = () => {
-  const { categories, formatMoney } = useCurrentUser();
+  const { categories, formatMoney, notifyTransactionsChanged } = useCurrentUser();
   const { month, setMonth } = useSelectedMonth();
   const { transactions, loading, error } = useMonthTransactions(month);
   const [search, setSearch] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importOpened, importModal] = useDisclosure(false);
   const monthName = month.format("MMMM YYYY");
 
@@ -38,30 +46,60 @@ const Transactions = () => {
     return transactions.filter(
       (t) =>
         (!needle || t.name.toLowerCase().includes(needle) || t.note.toLowerCase().includes(needle)) &&
-        (!selectedCategories.length || selectedCategories.includes(t.category))
+        (!selectedCategories.length || selectedCategories.includes(t.category)) &&
+        (typeFilter === "all" || t.type === typeFilter)
     );
-  }, [transactions, search, selectedCategories]);
+  }, [transactions, search, selectedCategories, typeFilter]);
+
+  // only act on rows that are still visible
+  const visibleSelected = new Set(filtered.filter((t) => selected.has(t.uuid)).map((t) => t.uuid));
 
   const isFiltered = filtered.length !== transactions.length;
-  const total = filtered.reduce((sum, t) => sum + t.amount, 0);
+  const filteredExpenses = expensesOf(filtered);
+  const total = sumAmounts(filteredExpenses);
+  const income = sumAmounts(incomeOf(filtered));
+
+  const runBulk = async (body: { action: "delete" } | { action: "categorize"; category: string }) => {
+    try {
+      const res = await api.post<{ affected: number }>("/transaction/bulk", { ...body, uuids: [...visibleSelected] });
+      notifications.show({
+        message: `${body.action === "delete" ? "Deleted" : "Updated"} ${res.data.affected} transaction${res.data.affected === 1 ? "" : "s"}.`,
+        color: "green",
+      });
+      setSelected(new Set());
+      notifyTransactionsChanged();
+    } catch {
+      notifications.show({ message: "Couldn't update those transactions. Try again later.", color: "red" });
+    }
+  };
+
+  const confirmBulkDelete = () =>
+    modals.openConfirmModal({
+      title: "Delete transactions",
+      centered: true,
+      children: <Text size="sm">Delete {visibleSelected.size} selected transactions? This can&apos;t be undone.</Text>,
+      labels: { confirm: "Delete", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: () => runBulk({ action: "delete" }),
+    });
 
   const daily = Array.from({ length: month.daysInMonth() }, (_, i) => ({ day: String(i + 1), Spent: 0 }));
-  filtered.forEach((t) => {
+  filteredExpenses.forEach((t) => {
     const d = dayjs(t.createdAt);
     if (d.isSame(month, "month")) daily[d.date() - 1].Spent += t.amount;
   });
 
-  const largest = filtered.reduce<(typeof filtered)[number] | null>(
+  const largest = filteredExpenses.reduce<(typeof filtered)[number] | null>(
     (max, t) => (!max || t.amount > max.amount ? t : max),
     null
   );
   const topCategory = categories
     .map((c) => ({
       label: c.label,
-      value: filtered.filter((t) => t.category === c.value).reduce((s, t) => s + t.amount, 0),
+      value: sumAmounts(filteredExpenses.filter((t) => t.category === c.value)),
     }))
     .sort((a, b) => b.value - a.value)[0];
-  const average = filtered.length ? total / filtered.length : 0;
+  const average = filteredExpenses.length ? total / filteredExpenses.length : 0;
 
   const exportCsv = () =>
     downloadFile(`transactions-${month.format("YYYY-MM")}.csv`, transactionsToCsv(filtered, categories));
@@ -82,7 +120,12 @@ const Transactions = () => {
             <StatCard label={`${isFiltered ? "Filtered spending" : "Spending"} for ${monthName}`}>
               <Title order={2}>{formatMoney(total)}</Title>
               <Text size="sm" c="dimmed">
-                {filtered.length} transaction{filtered.length === 1 ? "" : "s"}
+                {filteredExpenses.length} expense{filteredExpenses.length === 1 ? "" : "s"}
+                {income > 0 && (
+                  <Text span c="teal" size="sm">
+                    {" "}· +{formatMoney(income)} income
+                  </Text>
+                )}
               </Text>
             </StatCard>
 
@@ -100,7 +143,7 @@ const Transactions = () => {
             </StatCard>
 
             <StatCard label="Insights">
-              {filtered.length ? (
+              {filteredExpenses.length ? (
                 <Stack gap={4}>
                   <Text size="sm">
                     Largest: <b>{largest?.name}</b> ({formatMoney(largest?.amount ?? 0)})
@@ -120,6 +163,16 @@ const Transactions = () => {
 
           <Group justify="space-between" align="flex-end">
             <Group align="flex-end" gap="sm">
+              <SegmentedControl
+                aria-label="Type"
+                value={typeFilter}
+                onChange={setTypeFilter}
+                data={[
+                  { value: "all", label: "All" },
+                  { value: "expense", label: "Expenses" },
+                  { value: "income", label: "Income" },
+                ]}
+              />
               <TextInput
                 aria-label="Search transactions"
                 placeholder="Search name or note"
@@ -153,10 +206,38 @@ const Transactions = () => {
             </Group>
           </Group>
 
+          {visibleSelected.size > 0 && (
+            <Paper withBorder p="sm" radius="md">
+              <Group justify="space-between">
+                <Text size="sm" fw={500}>
+                  {visibleSelected.size} selected
+                </Text>
+                <Group gap="xs">
+                  <Select
+                    aria-label="Move to category"
+                    placeholder="Move to category…"
+                    data={categories.map(({ value, label }) => ({ value, label }))}
+                    value={null}
+                    onChange={(value) => value && runBulk({ action: "categorize", category: value })}
+                    w={200}
+                  />
+                  <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={confirmBulkDelete}>
+                    Delete
+                  </Button>
+                  <Button variant="subtle" onClick={() => setSelected(new Set())}>
+                    Clear
+                  </Button>
+                </Group>
+              </Group>
+            </Paper>
+          )}
+
           <TransactionTable
+            selected={visibleSelected}
+            onSelectedChange={setSelected}
             transactions={filtered}
             emptyText={
-              isFiltered || search || selectedCategories.length
+              isFiltered || search || selectedCategories.length || typeFilter !== "all"
                 ? "No transactions match your filters."
                 : `No transactions for ${monthName}.`
             }

@@ -1,19 +1,21 @@
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { findCategory } from "./transactions";
-import type { CategoryOption, Transaction } from "./types";
+import type { CategoryOption, CategoryRule, Transaction, TransactionType } from "./types";
+import { categoryFromRules } from "../../shared/schemas.js";
 
 dayjs.extend(customParseFormat);
 
 const escape = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 
 export const transactionsToCsv = (transactions: Transaction[], categories: CategoryOption[]) => {
-  const header = ["date", "name", "amount", "category", "note"];
+  const header = ["date", "name", "amount", "type", "category", "note"];
   const lines = transactions.map((t) =>
     [
       dayjs(t.createdAt).format("YYYY-MM-DD HH:mm"),
       t.name,
       t.amount.toFixed(2),
+      t.type,
       findCategory(categories, t.category).label,
       t.note,
     ]
@@ -68,6 +70,7 @@ export const parseCsv = (text: string): string[][] => {
 const DATE_FORMATS = ["YYYY-MM-DD HH:mm", "YYYY-MM-DD", "D/M/YYYY", "D/M/YYYY HH:mm", "DD/MM/YYYY", "D MMM YYYY"];
 
 export interface ImportRow {
+  transaction_type: TransactionType;
   transaction_name: string;
   transaction_amount: string;
   transaction_date: string;
@@ -80,13 +83,25 @@ export interface ImportResult {
 }
 
 // Turns CSV text into API rows. Columns are matched by header name (any order, any case):
-// date, name, amount, category (name or key, optional), note (optional).
-export const csvToImportRows = (text: string, categories: CategoryOption[]): ImportResult => {
+// date, name, amount, type (expense/income, optional), category (name or key, optional), note (optional).
+// A blank category is filled from the user's rules.
+export const csvToImportRows = (
+  text: string,
+  categories: CategoryOption[],
+  rules: CategoryRule[] = []
+): ImportResult => {
   const [header, ...lines] = parseCsv(text);
   if (!header) return { rows: [], errors: ["The file is empty."] };
 
   const col = (name: string) => header.findIndex((h) => h.trim().toLowerCase() === name);
-  const idx = { date: col("date"), name: col("name"), amount: col("amount"), category: col("category"), note: col("note") };
+  const idx = {
+    date: col("date"),
+    name: col("name"),
+    amount: col("amount"),
+    type: col("type"),
+    category: col("category"),
+    note: col("note"),
+  };
   const missing = (["date", "name", "amount"] as const).filter((k) => idx[k] === -1);
   if (missing.length) return { rows: [], errors: [`Missing column(s): ${missing.join(", ")}.`] };
 
@@ -104,16 +119,24 @@ export const csvToImportRows = (text: string, categories: CategoryOption[]): Imp
       return;
     }
 
+    const rawType = get("type").toLowerCase();
+    if (rawType && rawType !== "expense" && rawType !== "income") {
+      errors.push(`Line ${line}: type must be "expense" or "income", not "${get("type")}".`);
+      return;
+    }
+    const type: TransactionType = rawType === "income" ? "income" : "expense";
+
     const rawCategory = get("category").toLowerCase();
     const category = rawCategory
       ? categories.find((c) => c.value === rawCategory || c.label.toLowerCase() === rawCategory)
-      : { value: "other" };
+      : { value: categoryFromRules(get("name"), rules) ?? (type === "income" ? "income" : "other") };
     if (!category) {
       errors.push(`Line ${line}: unknown category "${get("category")}".`);
       return;
     }
 
     rows.push({
+      transaction_type: type,
       transaction_name: get("name"),
       transaction_amount: get("amount").replace(/[^0-9.,-]/g, ""),
       transaction_date: parsedDate.toISOString(),

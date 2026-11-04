@@ -42,6 +42,7 @@ export async function generateDueRecurring(query, userId, now = new Date()) {
         when,
         rule.recurring_uuid,
         period,
+        rule.transaction_type || "expense",
       ]);
       lastDone = period;
       period = nextPeriod(period);
@@ -49,7 +50,7 @@ export async function generateDueRecurring(query, userId, now = new Date()) {
 
     if (rows.length) {
       await query(
-        "INSERT IGNORE INTO `transaction` (transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp, recurring_uuid, recurring_period) VALUES ?",
+        "INSERT IGNORE INTO `transaction` (transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp, recurring_uuid, recurring_period, transaction_type) VALUES ?",
         [rows]
       );
       await query(

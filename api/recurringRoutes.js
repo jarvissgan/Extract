@@ -10,7 +10,7 @@ const recurringRouter = Router();
 recurringRouter.use("/recurring", requireSetUpUser);
 
 const COLUMNS =
-  "recurring_uuid, name, amount, category, note, day_of_month, active, start_period, last_generated_period, created_timestamp";
+  "recurring_uuid, transaction_type, name, amount, category, note, day_of_month, active, start_period, last_generated_period, created_timestamp";
 
 const findRule = async (uuid, userId) =>
   (await query(`SELECT ${COLUMNS} FROM recurring_transaction WHERE recurring_uuid = ? AND user_id = ?`, [uuid, userId]))[0];
@@ -37,8 +37,8 @@ recurringRouter.post(
     const uuid = randomUUID();
     const now = new Date();
     await query(
-      "INSERT INTO recurring_transaction (recurring_uuid, user_id, name, amount, category, note, day_of_month, active, start_period, created_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [uuid, req.currentUser.user_id, body.name, body.amount, body.category, body.note, body.day_of_month, body.active, body.start_period || periodOf(now), now]
+      "INSERT INTO recurring_transaction (recurring_uuid, user_id, transaction_type, name, amount, category, note, day_of_month, active, start_period, created_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [uuid, req.currentUser.user_id, body.transaction_type, body.name, body.amount, body.category, body.note, body.day_of_month, body.active, body.start_period || periodOf(now), now]
     );
     await generateDueRecurring(query, req.currentUser.user_id, now);
     res.status(200).json(await findRule(uuid, req.currentUser.user_id));
@@ -59,11 +59,11 @@ recurringRouter.put(
     const resuming = body.active && !existing.active;
     const now = new Date();
     await query(
-      `UPDATE recurring_transaction SET name = ?, amount = ?, category = ?, note = ?, day_of_month = ?, active = ?, updated_timestamp = ?
+      `UPDATE recurring_transaction SET transaction_type = ?, name = ?, amount = ?, category = ?, note = ?, day_of_month = ?, active = ?, updated_timestamp = ?
        ${resuming ? ", start_period = ?, last_generated_period = NULL" : ""}
        WHERE recurring_uuid = ? AND user_id = ?`,
       [
-        body.name, body.amount, body.category, body.note, body.day_of_month, body.active, now,
+        body.transaction_type, body.name, body.amount, body.category, body.note, body.day_of_month, body.active, now,
         ...(resuming ? [periodOf(now)] : []),
         req.params.uuid, req.currentUser.user_id,
       ]

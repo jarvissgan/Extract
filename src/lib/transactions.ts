@@ -5,6 +5,7 @@ export const toTransaction = (row: TransactionRow): Transaction => {
   const details = parseJson(row.transaction_details, {});
   return {
     uuid: row.transaction_uuid,
+    type: row.transaction_type === "income" ? "income" : "expense",
     name: row.transaction_name,
     amount: Number(row.transaction_amount) || 0,
     category: details.category || "other",
@@ -47,3 +48,7 @@ export const formatDateTime = (value: string | null) =>
   value ? dayjs(value).format("D MMM YYYY, h:mm A") : "—";
 
 export const formatDate = (value: string | null) => (value ? dayjs(value).format("D MMM YYYY") : "—");
+
+export const sumAmounts = (list: Transaction[]) => list.reduce((sum, t) => sum + t.amount, 0);
+export const expensesOf = (list: Transaction[]) => list.filter((t) => t.type === "expense");
+export const incomeOf = (list: Transaction[]) => list.filter((t) => t.type === "income");

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Anchor, Badge, Group, Table, Text, Tooltip, UnstyledButton } from "@mantine/core";
+import { Anchor, Badge, Checkbox, Group, Table, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconChevronDown, IconChevronUp, IconRepeat, IconSelector } from "@tabler/icons-react";
 import { Link, useNavigate } from "react-router";
 import { findCategory, formatDateTime } from "../lib/transactions";
@@ -11,6 +11,9 @@ type SortKey = "name" | "category" | "amount" | "date";
 interface Props {
   transactions: Transaction[];
   emptyText: string;
+  // pass both to show checkboxes for bulk actions
+  selected?: Set<string>;
+  onSelectedChange?: (selected: Set<string>) => void;
 }
 
 const SortHeader = ({
@@ -43,7 +46,8 @@ const SortHeader = ({
   );
 };
 
-const TransactionTable = ({ transactions, emptyText }: Props) => {
+const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange }: Props) => {
+  const selectable = !!selected && !!onSelectedChange;
   const navigate = useNavigate();
   const { sqid, categories, formatMoney } = useCurrentUser();
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "date", desc: true });
@@ -76,12 +80,30 @@ const TransactionTable = ({ transactions, emptyText }: Props) => {
   }
 
   const headerProps = { sort, onSort };
+  const allSelected = selectable && sorted.every((t) => selected!.has(t.uuid));
+  const someSelected = selectable && sorted.some((t) => selected!.has(t.uuid));
+  const toggle = (uuid: string) => {
+    const next = new Set(selected);
+    if (next.has(uuid)) next.delete(uuid);
+    else next.add(uuid);
+    onSelectedChange!(next);
+  };
 
   return (
     <Table.ScrollContainer minWidth={560}>
       <Table striped highlightOnHover withTableBorder verticalSpacing="sm">
         <Table.Thead>
           <Table.Tr>
+            {selectable && (
+              <Table.Th w={40}>
+                <Checkbox
+                  aria-label="Select all"
+                  checked={allSelected}
+                  indeterminate={someSelected && !allSelected}
+                  onChange={() => onSelectedChange!(allSelected ? new Set() : new Set(sorted.map((t) => t.uuid)))}
+                />
+              </Table.Th>
+            )}
             <SortHeader label="Name" sortKey="name" {...headerProps} />
             <SortHeader label="Category" sortKey="category" {...headerProps} />
             <SortHeader label="Amount" sortKey="amount" align="right" {...headerProps} />
@@ -94,7 +116,17 @@ const TransactionTable = ({ transactions, emptyText }: Props) => {
             const category = findCategory(categories, t.category);
             return (
               // the row is clickable with a mouse; the name link makes it reachable by keyboard
-              <Table.Tr key={t.uuid} style={{ cursor: "pointer" }} onClick={() => navigate(to)}>
+              <Table.Tr
+                key={t.uuid}
+                style={{ cursor: "pointer" }}
+                onClick={() => navigate(to)}
+                bg={selectable && selected!.has(t.uuid) ? "var(--mantine-primary-color-light)" : undefined}
+              >
+                {selectable && (
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                    <Checkbox aria-label={`Select ${t.name}`} checked={selected!.has(t.uuid)} onChange={() => toggle(t.uuid)} />
+                  </Table.Td>
+                )}
                 <Table.Td>
                   <Group gap={6} wrap="nowrap">
                     <Anchor component={Link} to={to} c="inherit" fz="sm" onClick={(e) => e.stopPropagation()}>
@@ -112,7 +144,12 @@ const TransactionTable = ({ transactions, emptyText }: Props) => {
                     {category.label}
                   </Badge>
                 </Table.Td>
-                <Table.Td ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <Table.Td
+                  ta="right"
+                  c={t.type === "income" ? "teal" : undefined}
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  {t.type === "income" ? "+" : ""}
                   {formatMoney(t.amount)}
                 </Table.Td>
                 <Table.Td>{formatDateTime(t.createdAt)}</Table.Td>

@@ -6,7 +6,14 @@ export const BUILTIN_CATEGORIES = [
   { value: "housing", label: "Housing", color: "blue.6" },
   { value: "transport", label: "Transport", color: "teal.6" },
   { value: "other", label: "Other", color: "gray.6" },
+  { value: "income", label: "Income", color: "green.6" },
 ];
+
+export const TRANSACTION_TYPES = ["expense", "income"];
+const transactionType = z.enum(TRANSACTION_TYPES).default("expense");
+
+export const MAX_RULES = 200;
+export const MAX_BULK = 1000;
 
 export const CATEGORY_COLORS = ["grape.6", "pink.6", "cyan.6", "lime.6", "yellow.6", "indigo.6", "red.6", "violet.6"];
 
@@ -38,6 +45,7 @@ export const transactionDetailsSchema = z.object({
 });
 
 export const transactionSchema = z.object({
+  transaction_type: transactionType,
   transaction_name: z.string().trim().min(1, "Name is required").max(255, "Name is too long"),
   transaction_amount: amountSchema,
   transaction_details: transactionDetailsSchema.default({ category: "other", transaction_note: "" }),
@@ -64,10 +72,23 @@ export const customCategorySchema = z.object({
   color: z.string().max(20),
 });
 
+// "if the name contains <pattern>, use <category>"; checked in order, first match wins
+export const ruleSchema = z.object({
+  pattern: z.string().trim().min(2, "Use at least 2 characters").max(60),
+  category: categoryKey,
+});
+
+const budgetAmount = z.number().min(0).max(1_000_000_000);
+
 export const preferencesSchema = z.object({
   budgets: z
-    .object({ monthly: z.union([z.literal(""), z.number().min(0).max(1_000_000_000)]).optional() })
-    .default({}),
+    .object({
+      monthly: z.union([z.literal(""), budgetAmount]).optional(),
+      // per-category monthly budgets, by category key
+      categories: z.record(z.string(), budgetAmount).default({}),
+    })
+    .default({ categories: {} }),
+  rules: z.array(ruleSchema).max(MAX_RULES, `At most ${MAX_RULES} rules`).default([]),
   notifications: z.object({ email: z.boolean().default(false) }).default({ email: false }),
   currency: z.enum(CURRENCIES).default("USD"),
   categories: z
@@ -89,6 +110,7 @@ export const userSchema = z.object({
 });
 
 export const recurringSchema = z.object({
+  transaction_type: transactionType,
   name: z.string().trim().min(1, "Name is required").max(255),
   amount: amountSchema,
   category: categoryKey.default("other"),
@@ -98,6 +120,22 @@ export const recurringSchema = z.object({
   // first month to create a transaction for (YYYY-MM); defaults to the current month
   start_period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Must be YYYY-MM").optional(),
 });
+
+export const bulkSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("delete"), uuids: z.array(z.string().max(36)).min(1).max(MAX_BULK) }),
+  z.object({
+    action: z.literal("categorize"),
+    uuids: z.array(z.string().max(36)).min(1).max(MAX_BULK),
+    category: categoryKey,
+  }),
+]);
+
+// Category for a transaction name from the user's rules, or null.
+export const categoryFromRules = (name, rules) => {
+  const lower = String(name || "").toLowerCase();
+  const rule = (rules || []).find((r) => lower.includes(r.pattern.toLowerCase()));
+  return rule ? rule.category : null;
+};
 
 // "transaction_amount: Amount must be a number"
 export const describeError = (error) => {

@@ -8,6 +8,7 @@ import {
   Group,
   Loader,
   NumberInput,
+  SegmentedControl,
   Select,
   Stack,
   Text,
@@ -22,9 +23,10 @@ import { IconArrowLeft, IconRepeat, IconTrash } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import api, { errorStatus } from "../lib/api";
 import { formatDateTime, toTransaction } from "../lib/transactions";
-import type { Transaction, TransactionRow } from "../lib/types";
+import type { Transaction, TransactionRow, TransactionType } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
-import { fieldErrors, transactionSchema } from "../../shared/schemas.js";
+import { categoryFromRules, fieldErrors, transactionSchema, userSchema } from "../../shared/schemas.js";
+import { parseJson } from "../lib/types";
 
 const errorMessage = (error: unknown) => {
   switch (errorStatus(error)) {
@@ -41,7 +43,8 @@ const errorMessage = (error: unknown) => {
 
 const TransactionDetail = () => {
   const { transaction_uuid } = useParams();
-  const { sqid, categories, currencySymbol, notifyTransactionsChanged } = useCurrentUser();
+  const { sqid, user, preferences, rules, categories, currencySymbol, notifyTransactionsChanged, refreshUser } =
+    useCurrentUser();
   const navigate = useNavigate();
   const listPath = `/transactions/${sqid}`;
 
@@ -51,6 +54,7 @@ const TransactionDetail = () => {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [type, setType] = useState<TransactionType>("expense");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState<number | string>(0);
   const [category, setCategory] = useState("other");
@@ -58,6 +62,7 @@ const TransactionDetail = () => {
   const [date, setDate] = useState<string | null>(null);
 
   const fillForm = (t: Transaction) => {
+    setType(t.type);
     setName(t.name);
     setAmount(t.amount);
     setCategory(t.category);
@@ -94,6 +99,7 @@ const TransactionDetail = () => {
   const save = async (e: FormEvent) => {
     e.preventDefault();
     const parsed = transactionSchema.safeParse({
+      transaction_type: type,
       transaction_name: name,
       transaction_amount: amount,
       transaction_details: { category, transaction_note: note },
@@ -110,6 +116,7 @@ const TransactionDetail = () => {
       await api.put(`/transaction/${transaction_uuid}`, parsed.data);
       const updated: Transaction = {
         ...original!,
+        type,
         name: parsed.data.transaction_name,
         amount: parsed.data.transaction_amount,
         category,
@@ -121,11 +128,57 @@ const TransactionDetail = () => {
       setEditing(false);
       notifyTransactionsChanged();
       notifications.show({ message: "Transaction updated.", color: "green" });
+      if (category !== original!.category && categoryFromRules(parsed.data.transaction_name, rules) !== category) {
+        offerRule(parsed.data.transaction_name, category);
+      }
     } catch (error) {
       notifications.show({ title: "Unable to update", message: errorMessage(error), color: "red" });
     } finally {
       setSaving(false);
     }
+  };
+
+  // After a category change, offer to categorize similar names the same way from now on.
+  const offerRule = (transactionName: string, newCategory: string) => {
+    const pattern = transactionName.trim().toLowerCase().slice(0, 60);
+    if (pattern.length < 2) return;
+    const label = categories.find((c) => c.value === newCategory)?.label ?? newCategory;
+    const id = notifications.show({
+      autoClose: 10000,
+      title: "Remember this?",
+      message: (
+        <Stack gap={6}>
+          <Text size="sm">
+            Always put names containing “{pattern}” in {label}?
+          </Text>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              onClick={async () => {
+                notifications.hide(id);
+                const body = userSchema.safeParse({
+                  username: user?.username,
+                  account_status: parseJson(user?.account_status, { status: "active" }),
+                  preference_json: {
+                    ...preferences,
+                    rules: [{ pattern, category: newCategory }, ...rules.filter((r) => r.pattern !== pattern)],
+                  },
+                });
+                if (!body.success) return;
+                await api.put(`/user/${sqid}`, body.data);
+                await refreshUser();
+                notifications.show({ message: "Rule saved. Manage rules in Settings.", color: "green" });
+              }}
+            >
+              Yes, remember
+            </Button>
+            <Button size="xs" variant="subtle" onClick={() => notifications.hide(id)}>
+              No
+            </Button>
+          </Group>
+        </Stack>
+      ),
+    });
   };
 
   const confirmDelete = () =>
@@ -194,6 +247,17 @@ const TransactionDetail = () => {
 
       <form onSubmit={save} noValidate>
         <Stack>
+          <SegmentedControl
+            aria-label="Type"
+            readOnly={!editing}
+            value={type}
+            onChange={(v) => setType(v as TransactionType)}
+            data={[
+              { value: "expense", label: "Expense" },
+              { value: "income", label: "Income" },
+            ]}
+            w="fit-content"
+          />
           <TextInput
             required
             readOnly={!editing}
