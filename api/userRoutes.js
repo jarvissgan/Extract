@@ -102,7 +102,11 @@ userRouter.delete(
   "/user/:sqid",
   requireOwnSqid,
   asyncRoute(async (req, res) => {
-    await query("DELETE FROM users WHERE user_sqid = ?", [req.params.sqid]);
+    // delete child rows explicitly too, in case older tables have no ON DELETE CASCADE
+    const { user_id } = req.currentUser;
+    await query("DELETE FROM recurring_transaction WHERE user_id = ?", [user_id]);
+    await query("DELETE FROM `transaction` WHERE user_id = ?", [user_id]);
+    await query("DELETE FROM users WHERE user_id = ?", [user_id]);
     return res.status(200).json({ user_sqid: req.params.sqid, deleted_timestamp: new Date() });
   })
 );

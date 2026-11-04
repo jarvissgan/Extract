@@ -34,7 +34,8 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue | null>(null);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
+  const { isAuthenticated, isLoading, getAccessTokenSilently, user: authUser } = useAuth0();
+  const authSub = authUser?.sub;
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUser] = useState<UserRow | null>(null);
   const [transactionsVersion, setTransactionsVersion] = useState(0);
@@ -58,6 +59,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setAccessTokenGetter(isAuthenticated ? () => getAccessTokenSilently() : null);
+  }, [isAuthenticated, getAccessTokenSilently]);
+
+  // Reload the account only when the signed-in person changes, not on every re-render
+  // of the auth provider.
+  useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
       setUser(null);
@@ -66,7 +72,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
     setStatus("loading");
     refreshUser();
-  }, [isAuthenticated, isLoading, getAccessTokenSilently, refreshUser]);
+  }, [isAuthenticated, isLoading, authSub, refreshUser]);
 
   const notifyTransactionsChanged = useCallback(() => setTransactionsVersion((v) => v + 1), []);
 
