@@ -22,6 +22,7 @@ import {
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import MonthHeader from "../components/MonthHeader";
+import QuickAddBar from "../components/QuickAddBar";
 import StatCard from "../components/StatCard";
 import TransactionTable from "../components/TransactionTable";
 import { useCurrentUser } from "../context/UserContext";
@@ -72,6 +73,7 @@ const Home = () => {
   return (
     <Stack p={{ base: "md", md: "xl" }} gap="lg">
       <MonthHeader title={`Hello, ${user?.given_name || user?.name || "there"}`} month={month} onMonthChange={setMonth} />
+      <QuickAddBar />
 
       {loading ? (
         <Center py="xl">

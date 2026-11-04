@@ -42,8 +42,9 @@ import { celebrate } from "../lib/celebrate";
 import { formatDate } from "../lib/transactions";
 import type { SavingsEntry, SavingsGoal } from "../lib/types";
 import StatCard from "../components/StatCard";
+import { HoneyPot, PoohBear } from "../components/Pooh";
 import { useCurrentUser } from "../context/UserContext";
-import { brandGradient, confettiColors, useAppearance } from "../theme/Appearance";
+import { confettiColors, ctaProps, useAppearance } from "../theme/Appearance";
 import { fieldErrors, GOAL_COLORS, savingsEntrySchema, savingsGoalSchema } from "../../shared/schemas.js";
 
 const EMOJIS = ["🎯", "🗾", "✈️", "🏖️", "🏠", "🚗", "💻", "📱", "🎓", "💍", "🛟", "🎁", "🐶", "🎮", "💰"];
@@ -365,6 +366,7 @@ const GoalCard = ({
   onDelete: () => void;
 }) => {
   const { formatMoney } = useCurrentUser();
+  const { appearance } = useAppearance();
   const percent = percentOf(goal);
   const reached = !!goal.reached_timestamp;
   const paceText = !reached ? pace(goal, formatMoney) : null;
@@ -412,6 +414,14 @@ const GoalCard = ({
       </Group>
 
       <Center my="md">
+        {appearance === "a" ? (
+          <Stack gap={2} align="center">
+            <HoneyPot size={104} fill={percent} title={`${Math.floor(percent)}% full`} />
+            <Text fw={800} fz={22} className="tabular">
+              {reached ? "Full! 🍯" : `${Math.floor(percent)}%`}
+            </Text>
+          </Stack>
+        ) : (
         <RingProgress
           size={150}
           thickness={14}
@@ -434,6 +444,7 @@ const GoalCard = ({
             </Stack>
           }
         />
+        )}
       </Center>
 
       <Text ta="center" fw={700} fz="lg" className="tabular">
@@ -489,7 +500,7 @@ const Savings = () => {
   const onEntry = (updated: SavingsGoal, reached: boolean) => {
     load();
     if (reached) {
-      celebrate(confettiColors(appearance));
+      celebrate(confettiColors(appearance), appearance === "a");
       setCelebrating(updated);
     }
   };
@@ -525,7 +536,7 @@ const Savings = () => {
             Set goals, put money aside, and watch them fill up.
           </Text>
         </div>
-        <Button leftSection={<IconPlus size={16} />} variant="gradient" gradient={brandGradient(appearance)} onClick={newGoal}>
+        <Button leftSection={<IconPlus size={16} />} {...ctaProps(appearance)} onClick={newGoal}>
           New goal
         </Button>
       </Group>
@@ -537,9 +548,13 @@ const Savings = () => {
       ) : goals.length === 0 ? (
         <Card padding="xl">
           <Stack align="center" gap="sm" py="xl">
-            <ThemeIcon size={64} radius="xl" variant="light">
-              <IconPigMoney size={34} />
-            </ThemeIcon>
+            {appearance === "a" ? (
+              <PoohBear size={110} />
+            ) : (
+              <ThemeIcon size={64} radius="xl" variant="light">
+                <IconPigMoney size={34} />
+              </ThemeIcon>
+            )}
             <Title order={3}>Start your first savings goal</Title>
             <Text c="dimmed" ta="center" maw={420}>
               A trip, a new laptop, an emergency fund… pick a target, add money whenever you save, and celebrate when
@@ -610,9 +625,13 @@ const Savings = () => {
 
       <Modal opened={!!celebrating} onClose={() => setCelebrating(null)} centered withCloseButton={false} size="sm">
         <Stack align="center" gap="xs" py="md">
-          <Text fz={56} lh={1}>
-            🎉
-          </Text>
+          {appearance === "a" ? (
+            <PoohBear size={120} />
+          ) : (
+            <Text fz={56} lh={1}>
+              🎉
+            </Text>
+          )}
           <Title order={2} ta="center">
             Goal reached!
           </Title>
@@ -620,7 +639,7 @@ const Savings = () => {
             You saved {celebrating ? formatMoney(Number(celebrating.saved)) : ""} for {celebrating?.emoji}{" "}
             {celebrating?.name}. Amazing.
           </Text>
-          <Button mt="md" onClick={() => setCelebrating(null)} variant="gradient" gradient={brandGradient(appearance)}>
+          <Button mt="md" onClick={() => setCelebrating(null)} {...ctaProps(appearance)}>
             Yay!
           </Button>
         </Stack>

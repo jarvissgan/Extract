@@ -1,7 +1,8 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { Badge, Button, Card, Container, Group, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
+import { Badge, Box, Button, Card, Container, Group, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
 import { IconChartPie, IconPigMoney, IconReceipt, IconTargetArrow } from "@tabler/icons-react";
-import { brandGradient, useAppearance } from "../theme/Appearance";
+import { ctaProps, useAppearance } from "../theme/Appearance";
+import { PoohBear } from "../components/Pooh";
 import { useNavigate } from "react-router";
 import { useCurrentUser } from "../context/UserContext";
 
@@ -37,6 +38,7 @@ const Landing = () => {
   return (
     <Container size="lg" py={{ base: 40, md: 80 }}>
       <Stack gap="xl">
+        <Group justify="space-between" align="center" wrap="nowrap" gap="xl">
         <Stack gap="sm" maw={620}>
           <Badge variant="light" size="lg" w="fit-content">
             Personal finance, simplified
@@ -53,16 +55,22 @@ const Landing = () => {
           </Text>
           <Group mt="md">
             {isAuthenticated ? (
-              <Button size="lg" variant="gradient" gradient={brandGradient(appearance)} onClick={() => navigate(sqid ? `/home/${sqid}` : "/setup")}>
+              <Button size="lg" {...ctaProps(appearance)} onClick={() => navigate(sqid ? `/home/${sqid}` : "/setup")}>
                 Go to dashboard
               </Button>
             ) : (
-              <Button size="lg" variant="gradient" gradient={brandGradient(appearance)} onClick={() => loginWithRedirect({ appState: { returnTo: "/setup" } })}>
+              <Button size="lg" {...ctaProps(appearance)} onClick={() => loginWithRedirect({ appState: { returnTo: "/setup" } })}>
                 Get started
               </Button>
             )}
           </Group>
         </Stack>
+          {appearance === "a" && (
+            <Box className="pooh-sway" visibleFrom="sm" style={{ flexShrink: 0 }}>
+              <PoohBear size={220} />
+            </Box>
+          )}
+        </Group>
 
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg" mt="xl">
           {FEATURES.map(({ icon: Icon, title, text }) => (

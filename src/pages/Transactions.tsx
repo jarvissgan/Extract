@@ -23,6 +23,7 @@ import api from "../lib/api";
 import dayjs from "dayjs";
 import ImportModal from "../components/ImportModal";
 import MonthHeader from "../components/MonthHeader";
+import QuickAddBar from "../components/QuickAddBar";
 import StatCard from "../components/StatCard";
 import TransactionTable from "../components/TransactionTable";
 import { useCurrentUser } from "../context/UserContext";
@@ -107,6 +108,7 @@ const Transactions = () => {
   return (
     <Stack p={{ base: "md", md: "xl" }} gap="lg">
       <MonthHeader title="Transactions" month={month} onMonthChange={setMonth} />
+      <QuickAddBar />
 
       {loading ? (
         <Center py="xl">

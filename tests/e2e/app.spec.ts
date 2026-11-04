@@ -25,7 +25,7 @@ test("seeded user sees their dashboard and can open a transaction with the keybo
   await firstLink.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Transaction details" })).toBeVisible();
-  await expect(page.getByLabel("Name")).toHaveValue(name);
+  await expect(page.getByRole("textbox", { name: "Name" })).toHaveValue(name);
 });
 
 test("a new user can sign up, add a repeating transaction and see it in their currency", async ({ page }) => {
@@ -40,7 +40,7 @@ test("a new user can sign up, add a repeating transaction and see it in their cu
 
   await page.getByRole("button", { name: "Add transaction" }).click();
   const dialog = page.getByRole("dialog", { name: "Add transaction" });
-  await dialog.getByLabel("Name").fill("Gym membership");
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Gym membership");
   await dialog.getByLabel("Amount").fill("45");
   await dialog.getByLabel(/Repeat monthly/).check();
   await dialog.getByRole("button", { name: "Add", exact: true }).click();
@@ -67,7 +67,7 @@ test("custom categories can be added and used", async ({ page }) => {
 
   await page.getByRole("button", { name: "Add transaction" }).click();
   const dialog = page.getByRole("dialog", { name: "Add transaction" });
-  await dialog.getByLabel("Name").fill("Dog food");
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Dog food");
   await dialog.getByLabel("Amount").fill("30");
   await dialog.getByRole("textbox", { name: "Category" }).click();
   await page.getByRole("option", { name: "Pets" }).click();
@@ -142,7 +142,7 @@ const addTransaction = async (page: Page, name: string, amount: string, type: "E
   await page.getByRole("button", { name: "Add transaction" }).click();
   const dialog = page.getByRole("dialog", { name: "Add transaction" });
   if (type === "Income") await dialog.getByText("Income", { exact: true }).click();
-  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByRole("textbox", { name: "Name" }).fill(name);
   await dialog.getByLabel("Amount").fill(amount);
   await dialog.getByRole("button", { name: "Add", exact: true }).click();
   await expect(dialog).toBeHidden();
@@ -243,4 +243,89 @@ test("A mode switches to butter yellow and pink and is remembered", async ({ pag
 
   await page.locator('[aria-label="Dark"]').first().click();
   await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
+});
+
+test("quick add saves from one line, reuses past amounts, and can be undone", async ({ page }) => {
+  await signUp(page, "quick");
+  const bar = page.getByLabel("Quick add");
+
+  await bar.fill("coffee 4.50");
+  await expect(page.getByText("Enter to add:")).toBeVisible();
+  await bar.press("Enter");
+  await expect(page.getByRole("link", { name: "coffee" })).toHaveCount(1);
+  await expect(bar).toHaveValue("");
+
+  // a name used before reuses its amount
+  await bar.fill("Coffee");
+  await expect(page.getByText("same as last time")).toBeVisible();
+  await bar.press("Enter");
+  await expect(page.getByRole("link", { name: "coffee" })).toHaveCount(2);
+
+  await bar.fill("+500 bonus");
+  await bar.press("Enter");
+  await expect(page.getByText("+$500.00").first()).toBeVisible();
+
+  await bar.fill("lunch 12 #fo");
+  await expect(page.locator("form").getByText("Food").or(page.getByText("FOOD")).first()).toBeVisible();
+  await bar.press("Enter");
+  await expect(page.getByRole("row", { name: /lunch/ }).getByText("Food")).toBeVisible();
+
+  await bar.fill("taxi 9 #nonsense");
+  await expect(page.getByText("No category called #nonsense")).toBeVisible();
+  await bar.fill("taxi");
+  await bar.press("Enter");
+  await expect(page.getByText("Add an amount, e.g. coffee 4.50")).toBeVisible();
+
+  // undo the last add
+  await bar.fill("mistake 99");
+  await bar.press("Enter");
+  await expect(page.getByRole("link", { name: "mistake" })).toBeVisible();
+  await page.locator(".mantine-Notification-root", { hasText: "Added mistake" }).getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("link", { name: "mistake" })).toHaveCount(0);
+});
+
+test("N opens the add dialog, suggestions fill in amounts, and Add another keeps it open", async ({ page }) => {
+  await signUp(page, "keys");
+  await page.getByLabel("Quick add").fill("Bubble tea 6.80");
+  await page.getByLabel("Quick add").press("Enter");
+  await expect(page.getByRole("link", { name: "Bubble tea" })).toBeVisible();
+
+  await page.locator("body").click({ position: { x: 5, y: 300 } });
+  await page.keyboard.press("n");
+  const dialog = page.getByRole("dialog", { name: "Add transaction" });
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Bub");
+  await page.getByRole("option", { name: "Bubble tea" }).click();
+  await expect(dialog.getByLabel("Amount")).toHaveValue("$6.80");
+
+  await dialog.getByRole("button", { name: "Add another" }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("");
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Snack");
+  await dialog.getByLabel("Amount").fill("3");
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("link", { name: "Bubble tea" })).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "Snack" })).toBeVisible();
+
+  // "/" jumps to quick add
+  await page.locator("body").click({ position: { x: 5, y: 300 } });
+  await page.keyboard.press("/");
+  await expect(page.getByLabel("Quick add")).toBeFocused();
+});
+
+test("A mode shows Pooh and uses no gradients", async ({ page }) => {
+  await signUp(page, "pooh");
+  await page.locator('[aria-label="A mode"]').first().click();
+  // decorative in the sidebar, so hidden from screen readers
+  await expect(page.locator('svg[aria-label="Winnie-the-Pooh"]').first()).toBeVisible();
+
+  const addButton = page.getByRole("button", { name: /Add transaction/ }).first();
+  await expect(addButton).toHaveCSS("background-image", "none");
+  await expect(page.locator("body")).not.toHaveCSS("background-image", /gradient/);
+
+  await page.getByText("Savings", { exact: true }).click();
+  await expect(page.getByText("Start your first savings goal")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Winnie-the-Pooh" })).toBeVisible();
 });

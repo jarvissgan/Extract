@@ -19,7 +19,8 @@ import {
 import { DateTimePicker } from "@mantine/dates";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconRepeat, IconTrash } from "@tabler/icons-react";
+import { IconArrowLeft, IconCopy, IconRepeat, IconTrash } from "@tabler/icons-react";
+import { useTransactionEntry } from "../context/TransactionEntry";
 import dayjs from "dayjs";
 import api, { errorStatus } from "../lib/api";
 import { formatDateTime, toTransaction } from "../lib/transactions";
@@ -46,6 +47,7 @@ const TransactionDetail = () => {
   const { sqid, user, preferences, rules, categories, currencySymbol, notifyTransactionsChanged, refreshUser } =
     useCurrentUser();
   const navigate = useNavigate();
+  const { openAdd } = useTransactionEntry();
   const listPath = `/transactions/${sqid}`;
 
   const [original, setOriginal] = useState<Transaction | null>(null);
@@ -235,6 +237,21 @@ const TransactionDetail = () => {
         </Group>
         {!editing && (
           <Group gap="xs">
+            <Button
+              variant="default"
+              leftSection={<IconCopy size={16} />}
+              onClick={() =>
+                openAdd({
+                  type: original.type,
+                  name: original.name,
+                  amount: original.amount,
+                  category: original.category,
+                  note: original.note,
+                })
+              }
+            >
+              Add again
+            </Button>
             <Button onClick={() => setEditing(true)}>Edit</Button>
             <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={confirmDelete}>
               Delete

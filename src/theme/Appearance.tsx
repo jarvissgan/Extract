@@ -131,10 +131,13 @@ export const useAppearance = () => {
   return ctx;
 };
 
-// Gradient for primary call-to-action buttons.
+// Props for primary call-to-action buttons: the violet-pink gradient in Light/Dark,
+// solid pink in A mode (no gradients there).
 // eslint-disable-next-line react-refresh/only-export-components
-export const brandGradient = (appearance: Appearance) =>
-  appearance === "a" ? { from: "pink.5", to: "orange.4", deg: 120 } : { from: "violet", to: "pink", deg: 120 };
+export const ctaProps = (appearance: Appearance) =>
+  appearance === "a"
+    ? ({ variant: "filled", color: "pink" } as const)
+    : ({ variant: "gradient", gradient: { from: "violet", to: "pink", deg: 120 } } as const);
 
 // Colors for celebrations, matching the current appearance.
 // eslint-disable-next-line react-refresh/only-export-components

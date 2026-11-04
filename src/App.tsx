@@ -4,6 +4,7 @@ import { Notifications } from "@mantine/notifications";
 import AuthProvider from "./auth/AuthProvider";
 import { UserProvider } from "./context/UserContext";
 import AppRoutes from "./AppRoutes";
+import { TransactionEntryProvider } from "./context/TransactionEntry";
 import { AppearanceProvider } from "./theme/Appearance";
 
 const App = () => (
@@ -13,7 +14,9 @@ const App = () => (
         <ModalsProvider>
           <Notifications />
           <UserProvider>
-            <AppRoutes />
+            <TransactionEntryProvider>
+              <AppRoutes />
+            </TransactionEntryProvider>
           </UserProvider>
         </ModalsProvider>
       </AppearanceProvider>

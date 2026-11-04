@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router";
 import { findCategory, formatDateTime } from "../lib/transactions";
 import type { Transaction } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
+import { useAppearance } from "../theme/Appearance";
+import { HoneyPot } from "./Pooh";
 
 type SortKey = "name" | "category" | "amount" | "date";
 
@@ -51,6 +53,7 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
   const navigate = useNavigate();
   const { sqid, categories, formatMoney } = useCurrentUser();
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "date", desc: true });
+  const { appearance } = useAppearance();
 
   const onSort = (key: SortKey) =>
     setSort((s) => ({ key, desc: s.key === key ? !s.desc : key === "date" || key === "amount" }));
@@ -75,9 +78,13 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
     return (
       <Card padding="xl">
         <Stack align="center" gap="xs" py="lg">
-          <ThemeIcon size={52} radius="xl" variant="light">
-            <IconReceipt size={28} />
-          </ThemeIcon>
+          {appearance === "a" ? (
+            <HoneyPot size={64} fill={0} title="An empty honey pot" />
+          ) : (
+            <ThemeIcon size={52} radius="xl" variant="light">
+              <IconReceipt size={28} />
+            </ThemeIcon>
+          )}
           <Text c="dimmed" ta="center">
             {emptyText}
           </Text>

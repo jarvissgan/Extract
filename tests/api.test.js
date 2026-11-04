@@ -340,6 +340,27 @@ test("savings goals track deposits, withdrawals and reaching the target", async 
   assert.equal((await api("GET", "/savings", { as: alice })).body.length, 0);
 });
 
+test("suggests frequent transactions with their latest amount", async () => {
+  // explicit times: stored times have one-second precision
+  const minutesAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
+  const add = (name, amount, category, when) =>
+    api("POST", "/transaction", {
+      as: bob,
+      body: newTransaction({ transaction_name: name, transaction_amount: amount, transaction_details: { category }, transaction_date: when }),
+    });
+  await add("Kopi", 1.8, "food", minutesAgo(30));
+  await add("kopi", 2.1, "food", minutesAgo(10));
+  await add("Taxi home", 18, "transport", minutesAgo(20));
+
+  const res = await api("GET", "/transaction/suggestions", { as: bob });
+  assert.equal(res.status, 200);
+  const kopi = res.body.find((s) => s.name.toLowerCase() === "kopi");
+  assert.equal(kopi.uses, 2);
+  assert.equal(Number(kopi.amount), 2.1);
+  assert.equal(res.body[0].name.toLowerCase(), "kopi"); // most used first
+  assert.equal((await api("GET", "/transaction/suggestions", { as: alice })).body.some((s) => s.name === "Taxi home"), false);
+});
+
 test("users cannot see or change other users' transactions", async () => {
   const tx = state.aliceTx;
   assert.equal((await api("GET", `/transaction/user/${state.aliceSqid}`, { as: bob })).status, 403);

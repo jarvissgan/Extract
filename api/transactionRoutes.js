@@ -45,6 +45,33 @@ transactionRouter.get(
   })
 );
 
+// The user's most-used transaction names from the last 6 months, each with its most
+// recent amount, type and details, for autocomplete and quick add.
+// (Registered before /transaction/:uuid so "suggestions" isn't read as a UUID.)
+transactionRouter.get(
+  "/transaction/suggestions",
+  requireSetUpUser,
+  asyncRoute(async (req, res) => {
+    const since = new Date(Date.now() - 183 * 864e5);
+    const rows = await query(
+      `SELECT transaction_name AS name, transaction_type AS type, transaction_amount AS amount,
+              transaction_details AS details, uses
+       FROM (
+         SELECT t.*,
+                ROW_NUMBER() OVER (PARTITION BY LOWER(transaction_name), transaction_type ORDER BY created_timestamp DESC) AS rn,
+                COUNT(*) OVER (PARTITION BY LOWER(transaction_name), transaction_type) AS uses
+         FROM \`transaction\` t
+         WHERE user_id = ? AND created_timestamp >= ?
+       ) latest
+       WHERE rn = 1
+       ORDER BY uses DESC, created_timestamp DESC
+       LIMIT 100`,
+      [req.currentUser.user_id, since]
+    );
+    res.json(rows);
+  })
+);
+
 transactionRouter.get(
   "/transaction/:uuid",
   requireSetUpUser,

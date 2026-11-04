@@ -9,7 +9,9 @@ Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and
 - Categorization rules ("name contains grab → Transport"), offered automatically when you correct a category
 - Custom categories, monthly recurring bills and salary, per-user currency
 - Savings goals with targets, deadlines, progress rings, history, and confetti when you reach one
-- Light, Dark and "A mode" (butter yellow and pink) appearances, switchable from the header or Settings
+- Light, Dark and "A mode" (butter yellow and pink, with classic Pooh and his hunny pot) appearances, switchable from the header or Settings
+- Fast entry: a quick-add bar ("coffee 4.50", "+3200 salary", "lunch 12 yesterday #food"), suggestions from your history,
+  "Add another", undo, and shortcuts (N = add, / = quick add); a floating + button on phones
 - Download all your data as JSON, or delete your account
 
 ## Stack
