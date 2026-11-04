@@ -1,5 +1,5 @@
 # Local MariaDB for development; started automatically by `npm run local` and `npm test`.
-# Reads DB_* values from .env. The schema is applied on first start.
+# Reads DB_* values from .env. Tables are created by `npm run db:migrate` (run automatically by those scripts).
 services:
   db:
     image: mariadb:11
@@ -14,7 +14,6 @@ services:
       - "${DB_PORT:-3306}:3306"
     volumes:
       - extract-db-data:/var/lib/mysql
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 3s

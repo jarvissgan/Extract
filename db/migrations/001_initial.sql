@@ -1,5 +1,4 @@
--- Schema for local development and tests.
--- Inferred from the queries in api/*.js. Keep in sync with the real database.
+-- Base schema. Uses IF NOT EXISTS so it's safe to run against an existing database.
 
 CREATE TABLE IF NOT EXISTS users (
   user_id           INT UNSIGNED NOT NULL AUTO_INCREMENT,

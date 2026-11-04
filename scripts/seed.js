@@ -12,6 +12,7 @@ import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
 import Sqids from "sqids";
 import { connect } from "./connect.js";
+import { generateDueRecurring } from "../api/recurring.js";
 
 if (process.env.NODE_ENV === "production") {
   console.error("Refusing to seed with NODE_ENV=production.");
@@ -45,6 +46,14 @@ const random = () => {
 const pick = (list) => list[Math.floor(random() * list.length)];
 const between = (min, max) => Math.round((min + random() * (max - min)) * 100) / 100;
 
+// fixed monthly bills, created as recurring rules: [name, amount, category, day]
+const RECURRING = [
+  ["Rent", 1200, "housing", 1],
+  ["Phone plan", 30, "other", 5],
+  ["Internet", 49.9, "housing", 15],
+  ["Streaming subscription", 15.99, "other", 20],
+];
+
 // [name, min, max, weight]
 const CATALOG = {
   food: [
@@ -63,9 +72,11 @@ const CATALOG = {
     ["Parking", 3, 15, 1],
   ],
   housing: [
-    ["Electricity bill", 60, 140, 0],
-    ["Internet", 40, 60, 0],
     ["Home supplies", 10, 60, 1],
+  ],
+  travel: [
+    ["Weekend trip", 120, 350, 1],
+    ["Hotel", 80, 200, 1],
   ],
   other: [
     ["Movie tickets", 12, 30, 1],
@@ -83,10 +94,6 @@ const weighted = Object.entries(CATALOG).flatMap(([category, items]) =>
 
 const NOTES = ["", "", "", "", "Paid by card", "Split with a friend", "Monthly", "Work related"];
 
-const pad = (n) => String(n).padStart(2, "0");
-const toSql = (d) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-
 // a random time in the given month, never in the future
 const randomTime = (year, month, day) => {
   const now = new Date();
@@ -100,19 +107,14 @@ function transactionsFor(userId) {
   const rows = [];
   const now = new Date();
   const add = (name, amount, category, when, note = "") =>
-    rows.push([randomUUID(), userId, name, amount, JSON.stringify({ category, transaction_note: note }), toSql(when)]);
+    rows.push([randomUUID(), userId, name, amount, JSON.stringify({ category, transaction_note: note }), when]);
 
   for (let i = months - 1; i >= 0; i--) {
     const first = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const [y, m] = [first.getFullYear(), first.getMonth()];
 
-    // monthly bills
-    add("Rent", 1200, "housing", randomTime(y, m, 1), "Monthly");
-    add("Phone plan", 30, "other", randomTime(y, m, Math.min(5, i === 0 ? now.getDate() : 5)), "Monthly");
-    if (i > 0 || now.getDate() >= 15) {
-      add("Electricity bill", between(60, 140), "housing", randomTime(y, m, 15));
-      add("Internet", 49.9, "housing", randomTime(y, m, 15));
-    }
+    // a variable monthly bill (fixed bills come from recurring rules below)
+    if (i > 0 || now.getDate() >= 15) add("Electricity bill", between(60, 140), "housing", randomTime(y, m, 15));
 
     // day-to-day spending (fewer so far in the current month)
     const count = i === 0 ? Math.round((perMonth * now.getDate()) / 30) : perMonth;
@@ -130,15 +132,20 @@ const db = await connect();
 try {
   for (const email of emails) {
     const username = email.split("@")[0].replace(/^./, (c) => c.toUpperCase());
-    const prefs = JSON.stringify({ budgets: { monthly: budget }, notifications: { email: false } });
+    const prefs = JSON.stringify({
+      budgets: { monthly: budget },
+      notifications: { email: false },
+      currency: "USD",
+      categories: [{ value: "travel", label: "Travel", color: "grape.6" }],
+    });
 
     const existing = await db.query("SELECT user_id FROM users WHERE email = ?", [email]);
     let userId = existing[0]?.user_id;
 
     if (!userId) {
       const res = await db.query(
-        "INSERT INTO users (username, user_details, preference_json, email, account_status, created_timestamp) VALUES (?, ?, ?, ?, ?, NOW())",
-        [username, "{}", prefs, email, JSON.stringify({ status: "active" })]
+        "INSERT INTO users (auth_sub, username, user_details, preference_json, email, account_status, created_timestamp) VALUES (?, ?, ?, ?, ?, ?, NOW())",
+        [`dev|${email}`, username, "{}", prefs, email, JSON.stringify({ status: "active" })]
       );
       userId = res.insertId;
     } else {
@@ -149,6 +156,8 @@ try {
     await db.query("UPDATE users SET user_sqid = ? WHERE user_id = ?", [sqid, userId]);
 
     await db.query("DELETE FROM `transaction` WHERE user_id = ?", [userId]);
+    await db.query("DELETE FROM recurring_transaction WHERE user_id = ?", [userId]);
+
     const rows = transactionsFor(userId);
     if (rows.length) {
       await db.query(
@@ -157,7 +166,17 @@ try {
       );
     }
 
-    console.log(`${email.padEnd(28)} sqid ${sqid}  ${rows.length} transactions over ${months} month(s)`);
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
+    const startPeriod = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`;
+    await db.query(
+      "INSERT INTO recurring_transaction (recurring_uuid, user_id, name, amount, category, note, day_of_month, active, start_period, created_timestamp) VALUES ?",
+      [RECURRING.map(([name, amount, category, day]) => [randomUUID(), userId, name, amount, category, "Monthly", day, true, startPeriod, start])]
+    );
+    await generateDueRecurring(db.query, userId, now);
+
+    const [{ total }] = await db.query("SELECT COUNT(*) AS total FROM `transaction` WHERE user_id = ?", [userId]);
+    console.log(`${email.padEnd(28)} sqid ${sqid}  ${total} transactions over ${months} month(s), ${RECURRING.length} recurring`);
   }
 } finally {
   await db.end();

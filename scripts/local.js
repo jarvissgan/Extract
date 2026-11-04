@@ -1,6 +1,6 @@
 // One command for offline local development:
 //   1. creates .env from .env.example if it doesn't exist
-//   2. starts the MariaDB container and waits until it's healthy
+//   2. starts the MariaDB container, waits until it's healthy, and applies migrations
 //   3. seeds dummy data if the database has no users yet
 //   4. starts the frontend + backend with offline dev login
 //
@@ -45,6 +45,10 @@ try {
   if (fresh) {
     step("Wiping the database (--fresh)");
     await run("node", ["scripts/db-reset.js", "--yes"]);
+  } else {
+    step("Applying database migrations");
+    const { migrate } = await import("./migrate.js");
+    await migrate({ log: (line) => console.log(`  ${line.trim()}`) });
   }
 
   const { connect } = await import("./connect.js");

@@ -1,21 +1,27 @@
-import mysql from "mysql";
+import mysql from "mysql2/promise";
 
-// A pool reconnects on its own if the server drops idle connections.
-const db = mysql.createPool({
+// All dates are stored and read as UTC. The browser converts to local time for display.
+export const poolOptions = () => ({
   host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
+  port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  connectionLimit: 10,
+  timezone: "Z",
+  decimalNumbers: true,
 });
 
-// promise wrapper so route handlers can use async/await
-const query = (sql, params = []) =>
-  new Promise((resolve, reject) => {
-    db.query(sql, params, (err, results) => (err ? reject(err) : resolve(results)));
-  });
+const pool = mysql.createPool({ ...poolOptions(), connectionLimit: 10 });
 
-const closeDb = () => new Promise((resolve) => db.end(() => resolve()));
+// Make NOW() / CURRENT_TIMESTAMP use UTC as well.
+pool.pool.on("connection", (conn) => conn.query("SET time_zone = '+00:00'"));
 
-export { db, query, closeDb };
+// Returns rows for SELECT, or the result header (insertId, affectedRows) otherwise.
+const query = async (sql, params = []) => {
+  const [results] = await pool.query(sql, params);
+  return results;
+};
+
+const closeDb = () => pool.end();
+
+export { pool, query, closeDb };

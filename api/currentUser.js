@@ -1,13 +1,16 @@
 import { query } from "../db-connections.js";
 
-// Resolves the Auth0 user behind the request's access token to a row in `users`.
-// The access token only carries `sub`, so the email is looked up once via
-// Auth0's /userinfo endpoint and cached per `sub`.
+// Identifies the signed-in user from the Auth0 user ID (`sub`) in their access token.
+//
+// Accounts are linked by `sub`, so changing email or logging in with a different
+// provider can't move data between accounts. The email is only fetched from Auth0
+// (/userinfo) for users without an account yet, and to link accounts created before
+// `sub` was stored.
 const emailBySub = new Map();
 
 const issuerBaseURL = () => (process.env.AUTH0_ISSUER_BASE_URL || "").replace(/\/+$/, "");
 
-async function fetchEmail(req) {
+export async function fetchEmail(req) {
   // set by the offline dev auth middleware (AUTH_MODE=dev)
   if (req.devEmail) return req.devEmail;
 
@@ -17,30 +20,56 @@ async function fetchEmail(req) {
   const res = await fetch(`${issuerBaseURL()}/userinfo`, {
     headers: { Authorization: req.headers.authorization },
   });
-  if (!res.ok) {
-    throw new Error(`userinfo request failed with status ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`userinfo request failed with status ${res.status}`);
+
   const { email, email_verified } = await res.json();
-  if (!email) {
-    throw new Error("userinfo response has no email; request the `email` scope");
-  }
-  if (email_verified === false) {
-    throw new Error("email is not verified");
-  }
-  emailBySub.set(sub, email);
-  return email;
+  if (!email) throw new Error("userinfo response has no email; request the `email` scope");
+  if (email_verified === false) throw new Error("email is not verified");
+
+  emailBySub.set(sub, email.toLowerCase());
+  return email.toLowerCase();
 }
 
-// Sets req.currentUser = { email, user_id, user_sqid } (user_id/user_sqid are null
-// until the account has been set up).
+const parsePreferences = (raw) => {
+  if (!raw) return {};
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw) ?? {};
+  } catch {
+    return {};
+  }
+};
+
+const findBySub = (sub) =>
+  query("SELECT user_id, user_sqid, email, preference_json FROM users WHERE auth_sub = ?", [sub]);
+
+// Sets req.currentUser = { sub, email, user_id, user_sqid, preferences }.
+// user_id / user_sqid are null until the account has been set up.
 export async function resolveCurrentUser(req, res, next) {
   try {
-    const email = await fetchEmail(req);
-    const rows = await query("SELECT user_id, user_sqid FROM users WHERE email = ?", [email]);
+    const sub = req.auth.payload.sub;
+    let [row] = await findBySub(sub);
+
+    if (!row) {
+      const email = await fetchEmail(req);
+      // account created before auth_sub existed: link it to this login
+      const linked = await query(
+        "UPDATE users SET auth_sub = ? WHERE email = ? AND auth_sub IS NULL",
+        [sub, email]
+      );
+      if (linked.affectedRows) [row] = await findBySub(sub);
+      if (!row) {
+        req.currentUser = { sub, email, user_id: null, user_sqid: null, preferences: {} };
+        return next();
+      }
+    }
+
     req.currentUser = {
-      email,
-      user_id: rows[0]?.user_id ?? null,
-      user_sqid: rows[0]?.user_sqid ?? null,
+      sub,
+      email: row.email,
+      user_id: row.user_id,
+      user_sqid: row.user_sqid,
+      preferences: parsePreferences(row.preference_json),
     };
     next();
   } catch (err) {
@@ -52,9 +81,7 @@ export async function resolveCurrentUser(req, res, next) {
 // Rejects requests for a sqid that doesn't belong to the signed-in user.
 export function requireOwnSqid(req, res, next) {
   const { user_sqid } = req.currentUser;
-  if (!user_sqid) {
-    return res.status(403).json({ error: "Account setup is not complete." });
-  }
+  if (!user_sqid) return res.status(403).json({ error: "Account setup is not complete." });
   if (req.params.sqid !== user_sqid) {
     return res.status(403).json({ error: "You do not have access to this user." });
   }
@@ -62,8 +89,6 @@ export function requireOwnSqid(req, res, next) {
 }
 
 export function requireSetUpUser(req, res, next) {
-  if (!req.currentUser.user_id) {
-    return res.status(403).json({ error: "Account setup is not complete." });
-  }
+  if (!req.currentUser.user_id) return res.status(403).json({ error: "Account setup is not complete." });
   next();
 }

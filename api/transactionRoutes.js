@@ -1,172 +1,142 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { query } from "../db-connections.js";
-import { v4 as uuidv4 } from "uuid";
 import { requireOwnSqid, requireSetUpUser } from "./currentUser.js";
+import { generateDueRecurring } from "./recurring.js";
+import { asyncRoute, checkCategory, parseOr400 } from "./validate.js";
+import { dateRangeSchema, importSchema, transactionSchema } from "../shared/schemas.js";
 
 const transactionRouter = Router();
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/;
+const toRow = (userId, t) => [
+  randomUUID(),
+  userId,
+  t.transaction_name,
+  t.transaction_amount,
+  JSON.stringify(t.transaction_details),
+  t.transaction_date ? new Date(t.transaction_date) : new Date(),
+];
 
-// returns an error message, or null when the transaction body is valid
-function validateTransaction({ transaction_name, transaction_amount, transaction_details }) {
-  if (typeof transaction_name !== "string" || !transaction_name.trim()) {
-    return "transaction_name doesn't contain anything. Please check and try again.";
-  }
-  const amount = Number(transaction_amount);
-  if (transaction_amount === "" || transaction_amount === null || !Number.isFinite(amount) || amount < 0) {
-    return "transaction_amount must be a number that is 0 or more.";
-  }
-  if (transaction_details !== undefined && (typeof transaction_details !== "object" || transaction_details === null)) {
-    return "transaction_details must be an object.";
-  }
-  return null;
-}
+// Lists the signed-in user's transactions, newest first. Optionally filtered by an
+// ISO date-time range, e.g. ?startDate=2026-11-01T00:00:00+08:00&endDate=2026-11-30T23:59:59.999+08:00
+transactionRouter.get(
+  "/transaction/user/:sqid",
+  requireOwnSqid,
+  asyncRoute(async (req, res) => {
+    const { user_id } = req.currentUser;
+    await generateDueRecurring(query, user_id);
 
-// gets the signed-in user's transactions, optionally filtered by date range
-// example: /transaction/user/abc12345?startDate=2024-03-01 00:00:00&endDate=2024-03-31 23:59:59
-transactionRouter.get("/transaction/user/:sqid", requireOwnSqid, async (req, res) => {
-  const { startDate, endDate } = req.query;
-  let sql = "SELECT * FROM transaction WHERE user_id = ?";
-  const params = [req.currentUser.user_id];
+    let sql = "SELECT * FROM `transaction` WHERE user_id = ?";
+    const params = [user_id];
 
-  if (startDate || endDate) {
-    if (!DATE_PATTERN.test(startDate || "") || !DATE_PATTERN.test(endDate || "")) {
-      return res.status(400).json({
-        error: "startDate and endDate must both be given as YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.",
-      });
+    if (req.query.startDate || req.query.endDate) {
+      const range = parseOr400(dateRangeSchema, req.query, res);
+      if (!range) return;
+      sql += " AND created_timestamp BETWEEN ? AND ?";
+      params.push(new Date(range.startDate), new Date(range.endDate));
     }
-    if (new Date(startDate) > new Date(endDate)) {
-      return res.status(400).json({ error: "startDate must be on or before endDate." });
-    }
-    sql += " AND created_timestamp BETWEEN ? AND ?";
-    params.push(startDate, endDate);
-  }
 
-  sql += " ORDER BY created_timestamp DESC";
-
-  try {
-    const results = await query(sql, params);
+    const results = await query(`${sql} ORDER BY created_timestamp DESC`, params);
     return res.status(200).json(results);
-  } catch (err) {
-    console.error("Error retrieving transactions:", err.message);
-    return res.status(500).json({ error: "Database error" });
-  }
-});
+  })
+);
 
-// gets one of the signed-in user's transactions via UUID
-transactionRouter.get("/transaction/:uuid", requireSetUpUser, async (req, res) => {
-  try {
-    const results = await query(
-      "SELECT * FROM transaction WHERE transaction_uuid = ? AND user_id = ?",
-      [req.params.uuid, req.currentUser.user_id]
-    );
-    if (results.length === 0) {
-      return res.status(404).json({
-        message: `Transaction with transaction_uuid '${req.params.uuid}' not found. Check and try again.`,
-      });
+transactionRouter.get(
+  "/transaction/:uuid",
+  requireSetUpUser,
+  asyncRoute(async (req, res) => {
+    const [row] = await query("SELECT * FROM `transaction` WHERE transaction_uuid = ? AND user_id = ?", [
+      req.params.uuid,
+      req.currentUser.user_id,
+    ]);
+    if (!row) return res.status(404).json({ message: `Transaction '${req.params.uuid}' not found.` });
+    return res.status(200).json(row);
+  })
+);
+
+transactionRouter.post(
+  "/transaction",
+  requireSetUpUser,
+  asyncRoute(async (req, res) => {
+    if (req.body.sqid && req.body.sqid !== req.currentUser.user_sqid) {
+      return res.status(403).json({ error: "You do not have access to this user." });
     }
-    return res.status(200).json(results[0]);
-  } catch (err) {
-    console.error("Error retrieving transaction:", err.message);
-    return res.status(500).json({ error: "Database error" });
-  }
-});
+    const body = parseOr400(transactionSchema, req.body, res);
+    if (!body || !checkCategory(body.transaction_details.category, req.currentUser, res)) return;
 
-// creates a transaction for the signed-in user and assigns it a transaction_uuid
-transactionRouter.post("/transaction", requireSetUpUser, async (req, res) => {
-  const { sqid, transaction_name, transaction_amount, transaction_details = {} } = req.body;
-
-  if (sqid && sqid !== req.currentUser.user_sqid) {
-    return res.status(403).json({ error: "You do not have access to this user." });
-  }
-
-  const validationError = validateTransaction(req.body);
-  if (validationError) {
-    return res.status(400).json({ error: validationError });
-  }
-
-  const transaction_uuid = uuidv4();
-  const created_timestamp = new Date();
-
-  try {
+    const row = toRow(req.currentUser.user_id, body);
     await query(
-      "INSERT INTO transaction (transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp) VALUES (?,?,?,?,?,?)",
-      [
-        transaction_uuid,
-        req.currentUser.user_id,
-        transaction_name.trim(),
-        Number(transaction_amount),
-        JSON.stringify(transaction_details),
-        created_timestamp,
-      ]
+      "INSERT INTO `transaction` (transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp) VALUES (?)",
+      [row]
     );
     return res.status(200).json({
-      transaction_uuid,
+      transaction_uuid: row[0],
       user_sqid: req.currentUser.user_sqid,
-      created_timestamp,
+      created_timestamp: row[5],
     });
-  } catch (err) {
-    console.error(`Error creating transaction: ${err.message}`);
-    return res.status(500).json({ error: "Database error" });
-  }
-});
+  })
+);
 
-// modifies one of the signed-in user's transactions via UUID
-transactionRouter.put("/transaction/:uuid", requireSetUpUser, async (req, res) => {
-  const { transaction_name, transaction_amount, transaction_details = {} } = req.body;
+// Adds many transactions at once (CSV import). All rows are checked before any are saved.
+transactionRouter.post(
+  "/transaction/import",
+  requireSetUpUser,
+  asyncRoute(async (req, res) => {
+    const body = parseOr400(importSchema, req.body, res);
+    if (!body) return;
+    for (const t of body.transactions) {
+      if (!checkCategory(t.transaction_details.category, req.currentUser, res)) return;
+    }
 
-  const validationError = validateTransaction(req.body);
-  if (validationError) {
-    return res.status(400).json({ error: validationError });
-  }
-
-  const updated_timestamp = new Date();
-
-  try {
-    const results = await query(
-      "UPDATE transaction SET transaction_name = ?, transaction_amount = ?, transaction_details = ?, updated_timestamp = ? WHERE transaction_uuid = ? AND user_id = ?",
-      [
-        transaction_name.trim(),
-        Number(transaction_amount),
-        JSON.stringify(transaction_details),
-        updated_timestamp,
-        req.params.uuid,
-        req.currentUser.user_id,
-      ]
+    const rows = body.transactions.map((t) => toRow(req.currentUser.user_id, t));
+    await query(
+      "INSERT INTO `transaction` (transaction_uuid, user_id, transaction_name, transaction_amount, transaction_details, created_timestamp) VALUES ?",
+      [rows]
     );
+    return res.status(200).json({ imported: rows.length });
+  })
+);
 
+transactionRouter.put(
+  "/transaction/:uuid",
+  requireSetUpUser,
+  asyncRoute(async (req, res) => {
+    const body = parseOr400(transactionSchema, req.body, res);
+    if (!body || !checkCategory(body.transaction_details.category, req.currentUser, res)) return;
+
+    const updated_timestamp = new Date();
+    const fields = [body.transaction_name, body.transaction_amount, JSON.stringify(body.transaction_details), updated_timestamp];
+    let sql = "UPDATE `transaction` SET transaction_name = ?, transaction_amount = ?, transaction_details = ?, updated_timestamp = ?";
+    if (body.transaction_date) {
+      sql += ", created_timestamp = ?";
+      fields.push(new Date(body.transaction_date));
+    }
+
+    const results = await query(`${sql} WHERE transaction_uuid = ? AND user_id = ?`, [
+      ...fields,
+      req.params.uuid,
+      req.currentUser.user_id,
+    ]);
     if (results.affectedRows === 0) {
       return res.status(404).json({ message: `Transaction ${req.params.uuid} not found.` });
     }
+    return res.status(200).json({ transaction_uuid: req.params.uuid, ...body, updated_timestamp });
+  })
+);
 
-    return res.status(200).json({
-      transaction_uuid: req.params.uuid,
-      transaction_name: transaction_name.trim(),
-      transaction_amount: Number(transaction_amount),
-      transaction_details,
-      updated_timestamp,
-    });
-  } catch (err) {
-    console.error(`Error updating transaction: ${err.message}`);
-    return res.status(500).json({ error: "Database error" });
-  }
-});
-
-// deletes one of the signed-in user's transactions via UUID
-transactionRouter.delete("/transaction/:uuid", requireSetUpUser, async (req, res) => {
-  try {
-    const results = await query(
-      "DELETE FROM transaction WHERE transaction_uuid = ? AND user_id = ?",
-      [req.params.uuid, req.currentUser.user_id]
-    );
+transactionRouter.delete(
+  "/transaction/:uuid",
+  requireSetUpUser,
+  asyncRoute(async (req, res) => {
+    const results = await query("DELETE FROM `transaction` WHERE transaction_uuid = ? AND user_id = ?", [
+      req.params.uuid,
+      req.currentUser.user_id,
+    ]);
     if (results.affectedRows === 0) {
       return res.status(404).json({ message: `Transaction ${req.params.uuid} not found.` });
     }
     return res.status(200).json({ transaction_uuid: req.params.uuid, deleted_timestamp: new Date() });
-  } catch (err) {
-    console.error(`Error deleting transaction: ${err.message}`);
-    return res.status(500).json({ error: "Database error" });
-  }
-});
+  })
+);
 
 export default transactionRouter;

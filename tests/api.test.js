@@ -109,14 +109,125 @@ test("validates transaction input", async () => {
 
 test("filters by date range and rejects bad ranges", async () => {
   const sqid = state.aliceSqid;
-  const inRange = await api("GET", `/transaction/user/${sqid}?startDate=2000-01-01&endDate=2999-12-31`, { as: alice });
-  const outOfRange = await api("GET", `/transaction/user/${sqid}?startDate=2000-01-01&endDate=2000-01-31`, { as: alice });
-  const backwards = await api("GET", `/transaction/user/${sqid}?startDate=2001-01-01&endDate=2000-01-01`, { as: alice });
+  const range = (start, end) =>
+    `/transaction/user/${sqid}?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`;
+  const inRange = await api("GET", range("2000-01-01T00:00:00Z", "2999-12-31T23:59:59Z"), { as: alice });
+  const outOfRange = await api("GET", range("2000-01-01T00:00:00Z", "2000-01-31T23:59:59Z"), { as: alice });
+  const backwards = await api("GET", range("2001-01-01T00:00:00Z", "2000-01-01T00:00:00Z"), { as: alice });
   const garbage = await api("GET", `/transaction/user/${sqid}?startDate=yesterday&endDate=today`, { as: alice });
   assert.equal(inRange.body.length, 1);
   assert.equal(outOfRange.body.length, 0);
   assert.equal(backwards.status, 400);
   assert.equal(garbage.status, 400);
+});
+
+test("rejects unknown categories and accepts the user's custom ones", async () => {
+  const unknown = await api("POST", "/transaction", {
+    as: alice,
+    body: newTransaction({ transaction_details: { category: "travel" } }),
+  });
+  assert.equal(unknown.status, 400);
+
+  const me = (await api("GET", "/user", { as: alice })).body;
+  const prefs = typeof me.preference_json === "string" ? JSON.parse(me.preference_json) : me.preference_json;
+  const saved = await api("PUT", `/user/${state.aliceSqid}`, {
+    as: alice,
+    body: {
+      username: me.username,
+      preference_json: { ...prefs, currency: "SGD", categories: [{ value: "travel", label: "Travel", color: "grape.6" }] },
+    },
+  });
+  assert.equal(saved.status, 200);
+
+  const known = await api("POST", "/transaction", {
+    as: alice,
+    body: newTransaction({ transaction_details: { category: "travel" } }),
+  });
+  assert.equal(known.status, 200);
+  await api("DELETE", `/transaction/${known.body.transaction_uuid}`, { as: alice });
+
+  const clash = await api("PUT", `/user/${state.aliceSqid}`, {
+    as: alice,
+    body: { username: me.username, preference_json: { categories: [{ value: "food", label: "Food 2", color: "red.6" }] } },
+  });
+  assert.equal(clash.status, 400);
+});
+
+test("stores transaction dates in UTC and returns them as ISO", async () => {
+  const when = "2026-03-15T23:30:00+08:00"; // 15:30 UTC
+  const created = await api("POST", "/transaction", {
+    as: alice,
+    body: newTransaction({ transaction_name: "Late dinner", transaction_date: when }),
+  });
+  const fetched = await api("GET", `/transaction/${created.body.transaction_uuid}`, { as: alice });
+  assert.equal(fetched.body.created_timestamp, "2026-03-15T15:30:00.000Z");
+  assert.equal(typeof fetched.body.transaction_amount, "number");
+  await api("DELETE", `/transaction/${created.body.transaction_uuid}`, { as: alice });
+});
+
+test("imports many transactions at once, all or nothing", async () => {
+  const rows = [
+    { transaction_name: "Imported A", transaction_amount: "12.50", transaction_date: "2025-01-02T10:00:00Z" },
+    { transaction_name: "Imported B", transaction_amount: 3, transaction_date: "2025-01-03T10:00:00Z", transaction_details: { category: "food" } },
+  ];
+  const bad = await api("POST", "/transaction/import", {
+    as: bob,
+    body: { transactions: [...rows, { transaction_name: "", transaction_amount: 1, transaction_date: "2025-01-04T10:00:00Z" }] },
+  });
+  assert.equal(bad.status, 400);
+  assert.match(bad.body.error, /transactions\.2\.transaction_name/);
+
+  const ok = await api("POST", "/transaction/import", { as: bob, body: { transactions: rows } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.imported, 2);
+  const list = await api("GET", `/transaction/user/${state.bobSqid}`, { as: bob });
+  assert.equal(list.body.length, 2);
+});
+
+test("recurring rules create one transaction per month and can be paused", async () => {
+  const now = new Date();
+  const today = Math.max(1, now.getUTCDate() - 1);
+  // generated transactions are dated 12:00 UTC on their day
+  const expected = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), today, 12) <= now.getTime() ? 1 : 0;
+  const created = await api("POST", "/recurring", {
+    as: alice,
+    body: { name: "Gym", amount: 40, category: "other", day_of_month: today },
+  });
+  assert.equal(created.status, 200);
+  const uuid = created.body.recurring_uuid;
+
+  // listing twice must not duplicate this month's transaction
+  await api("GET", `/transaction/user/${state.aliceSqid}`, { as: alice });
+  const list = await api("GET", `/transaction/user/${state.aliceSqid}`, { as: alice });
+  assert.equal(list.body.filter((t) => t.recurring_uuid === uuid).length, expected);
+
+  const paused = await api("PUT", `/recurring/${uuid}`, {
+    as: alice,
+    body: { name: "Gym", amount: 40, category: "other", day_of_month: today, active: false },
+  });
+  assert.equal(paused.body.active, 0);
+
+  assert.equal((await api("GET", "/recurring", { as: bob })).body.length, 0);
+  assert.equal((await api("DELETE", `/recurring/${uuid}`, { as: bob })).status, 404);
+  assert.equal((await api("DELETE", `/recurring/${uuid}`, { as: alice })).status, 200);
+
+  // the generated transaction is kept
+  const after = await api("GET", `/transaction/user/${state.aliceSqid}`, { as: alice });
+  assert.equal(after.body.filter((t) => t.transaction_name === "Gym").length, expected);
+});
+
+test("links an account created before auth_sub existed on next login", async () => {
+  const legacy = `legacy-${run}@test.local`;
+  await query(
+    "INSERT INTO users (username, preference_json, email, account_status, user_sqid) VALUES ('legacy', '{}', ?, '{}', ?)",
+    [legacy, `legacy${run}`]
+  );
+  const me = await api("GET", "/user", { as: legacy });
+  assert.equal(me.status, 200);
+  assert.equal(me.body.email, legacy);
+  const [row] = await query("SELECT auth_sub FROM users WHERE email = ?", [legacy]);
+  assert.equal(row.auth_sub, `dev|${legacy}`);
+  await query("DELETE FROM users WHERE email = ?", [legacy]);
 });
 
 test("users cannot see or change other users' transactions", async () => {

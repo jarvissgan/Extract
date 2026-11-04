@@ -1,0 +1,116 @@
+// Validation shared by the API (Node) and the frontend (Vite), so both apply the same rules.
+import { z } from "zod";
+
+export const BUILTIN_CATEGORIES = [
+  { value: "food", label: "Food", color: "orange.6" },
+  { value: "housing", label: "Housing", color: "blue.6" },
+  { value: "transport", label: "Transport", color: "teal.6" },
+  { value: "other", label: "Other", color: "gray.6" },
+];
+
+export const CATEGORY_COLORS = ["grape.6", "pink.6", "cyan.6", "lime.6", "yellow.6", "indigo.6", "red.6", "violet.6"];
+
+export const CURRENCIES = ["USD", "SGD", "EUR", "GBP", "AUD", "CAD", "MYR", "JPY", "CNY", "INR", "HKD", "NZD"];
+
+export const MAX_IMPORT_ROWS = 1000;
+
+// Turns "" / null into "missing" and numeric strings into numbers before checking.
+const toNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  return typeof value === "string" ? Number(value.replace(/,/g, "")) : value;
+};
+
+export const amountSchema = z.preprocess(
+  toNumber,
+  z
+    .number({ error: "Amount must be a number" })
+    .min(0, "Amount can't be negative")
+    .max(1_000_000_000, "Amount is too large")
+);
+
+export const isoDateTime = z.iso.datetime({ offset: true, error: "Must be an ISO date-time" });
+
+const categoryKey = z.string().trim().min(1, "Category is required").max(40);
+
+export const transactionDetailsSchema = z.object({
+  category: categoryKey.default("other"),
+  transaction_note: z.string().max(2000, "Note is too long").default(""),
+});
+
+export const transactionSchema = z.object({
+  transaction_name: z.string().trim().min(1, "Name is required").max(255, "Name is too long"),
+  transaction_amount: amountSchema,
+  transaction_details: transactionDetailsSchema.default({ category: "other", transaction_note: "" }),
+  // when the transaction happened; defaults to now
+  transaction_date: isoDateTime.optional(),
+});
+
+export const importSchema = z.object({
+  transactions: z
+    .array(transactionSchema.extend({ transaction_date: isoDateTime }))
+    .min(1, "Nothing to import")
+    .max(MAX_IMPORT_ROWS, `You can import at most ${MAX_IMPORT_ROWS} rows at a time`),
+});
+
+export const dateRangeSchema = z
+  .object({ startDate: isoDateTime, endDate: isoDateTime })
+  .refine((r) => new Date(r.startDate) <= new Date(r.endDate), {
+    message: "startDate must be on or before endDate",
+  });
+
+export const customCategorySchema = z.object({
+  value: z.string().regex(/^[a-z0-9-]{1,40}$/, "Use lowercase letters, numbers and dashes"),
+  label: z.string().trim().min(1, "Name is required").max(40),
+  color: z.string().max(20),
+});
+
+export const preferencesSchema = z.object({
+  budgets: z
+    .object({ monthly: z.union([z.literal(""), z.number().min(0).max(1_000_000_000)]).optional() })
+    .default({}),
+  notifications: z.object({ email: z.boolean().default(false) }).default({ email: false }),
+  currency: z.enum(CURRENCIES).default("USD"),
+  categories: z
+    .array(customCategorySchema)
+    .max(30, "At most 30 custom categories")
+    .default([])
+    .refine((list) => new Set(list.map((c) => c.value)).size === list.length, "Category names must be unique")
+    .refine(
+      (list) => list.every((c) => !BUILTIN_CATEGORIES.some((b) => b.value === c.value)),
+      "Custom categories can't reuse a built-in name"
+    ),
+});
+
+export const userSchema = z.object({
+  username: z.string().trim().min(1, "Username is required").max(255),
+  user_details: z.record(z.string(), z.unknown()).default({}),
+  preference_json: preferencesSchema,
+  account_status: z.object({ status: z.string().min(1) }).default({ status: "active" }),
+});
+
+export const recurringSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(255),
+  amount: amountSchema,
+  category: categoryKey.default("other"),
+  note: z.string().max(2000).default(""),
+  day_of_month: z.coerce.number().int().min(1, "Day must be 1-31").max(31, "Day must be 1-31"),
+  active: z.boolean().default(true),
+  // first month to create a transaction for (YYYY-MM); defaults to the current month
+  start_period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Must be YYYY-MM").optional(),
+});
+
+// "transaction_amount: Amount must be a number"
+export const describeError = (error) => {
+  const issue = error.issues[0];
+  const path = issue.path.join(".");
+  return path ? `${path}: ${issue.message}` : issue.message;
+};
+
+// { "transaction_amount": "Amount must be a number", ... } for showing next to form fields
+export const fieldErrors = (error) =>
+  Object.fromEntries(error.issues.map((i) => [i.path.join("."), i.message]).reverse());
+
+export const userCategories = (preferences) => [
+  ...BUILTIN_CATEGORIES,
+  ...((preferences && preferences.categories) || []),
+];
