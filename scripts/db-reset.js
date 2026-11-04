@@ -1,5 +1,7 @@
 // Drops all app tables and rebuilds them from db/migrations.
 // Usage: npm run db:reset -- --yes
+// always the local Docker database, never the one in .env
+import "./use-local-db.js";
 import { connect } from "./connect.js";
 import { migrate } from "./migrate.js";
 

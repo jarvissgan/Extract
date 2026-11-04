@@ -11,14 +11,16 @@ Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and
 - Database: MariaDB 11 via `mysql2`
 
 ## Quick start (offline, no Auth0 needed)
-Needs Node 22+ and Docker.
+Needs Node 22+, Docker, and Docker Compose (the `docker compose` plugin from Docker Desktop, or the standalone `docker-compose`, e.g. `brew install docker-compose`).
 
 ```bash
 npm install
 npm run local
 ```
 
-`npm run local` creates `.env` from `.env.example` if you don't have one, starts MariaDB in Docker, applies migrations, adds dummy data if the database is empty, and starts the app on http://localhost:5173 with offline login.
+`npm run local` creates `.env` from `.env.example` if you don't have one, starts its own MariaDB in Docker on `localhost:3307`, applies migrations, adds dummy data if that database is empty, and starts the app on http://localhost:5173 with offline login.
+
+**Two databases:** the dev tools (`npm run local`, `npm test`, `test:e2e`, `db:seed`, `db:reset`) always use that Docker database and ignore the `DB_*` settings in `.env`, so they can never touch your real data. `npm run dev` and `npm run db:migrate` use the database in `.env`. If port 3307 is taken, set `LOCAL_DB_PORT` in `.env`.
 
 Click **Log in** and pick a seeded user (`dev@extract.local` or `alice@extract.local`), or type any email to try sign-up as a new user. A yellow **Dev auth** badge shows when offline login is on.
 
@@ -31,10 +33,10 @@ Click **Log in** and pick a seeded user (`dev@extract.local` or `alice@extract.l
 | `npm run test:e2e` | Browser tests with Playwright (starts the app if it isn't running). First time: `npx playwright install chromium` |
 | `npm run lint` / `typecheck` | ESLint / TypeScript checks |
 | `npm run build` | Production build of the frontend |
-| `npm run db:migrate` | Apply new files in `db/migrations` to the database in `.env` |
-| `npm run db:seed` | Add dummy data with custom options (see below) |
-| `npm run db:reset -- --yes` | Drop all tables and rebuild them from migrations (deletes all data) |
-| `npm run db:down` | Stop the database container (data is kept) |
+| `npm run db:migrate` | Apply new files in `db/migrations` to **the database in `.env`** |
+| `npm run db:seed` | Add dummy data to the local Docker database, with custom options (see below) |
+| `npm run db:reset -- --yes` | Wipe the local Docker database and rebuild it from migrations |
+| `npm run db:down` | Stop the local Docker database (data is kept) |
 
 GitHub Actions runs lint, typecheck, build, API tests and browser tests on every push and pull request (`.github/workflows/ci.yml`).
 
@@ -54,7 +56,8 @@ Schema changes live in `db/migrations` as numbered SQL files, applied in order a
 Copy `.env.example` to `.env` and fill it in.
 
 - Variables starting with `VITE_` are bundled into the browser JavaScript, so they must never hold secrets.
-- Database, Auth0 API, `CORS_ORIGIN` and `RATE_LIMIT_PER_MINUTE` are only read by the server.
+- Database (`DB_*`), Auth0 API, `CORS_ORIGIN` and `RATE_LIMIT_PER_MINUTE` are only read by the server.
+- `DB_*` is your real database. The local Docker database's settings are fixed in `scripts/use-local-db.js` and `docker-compose.yml`.
 
 ## How auth works
 - **Normal mode:** the API checks the Auth0 access token and finds the account by the token's Auth0 user ID (`sub`). Users can only read or change their own account, transactions and recurring rules.

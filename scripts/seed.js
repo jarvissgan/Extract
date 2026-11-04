@@ -8,6 +8,8 @@
 //   --seed 42                 random seed, so the same options give the same data (default 42)
 //
 // Re-running replaces the transactions of the listed users; other users are left alone.
+// always the local Docker database, never the one in .env
+import "./use-local-db.js";
 import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
 import Sqids from "sqids";

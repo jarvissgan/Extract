@@ -1,14 +1,17 @@
 // One command for offline local development:
 //   1. creates .env from .env.example if it doesn't exist
-//   2. starts the MariaDB container, waits until it's healthy, and applies migrations
+//   2. starts the local MariaDB container (port 3307, separate from the database in .env)
+//      and applies migrations
 //   3. seeds dummy data if the database has no users yet
 //   4. starts the frontend + backend with offline dev login
 //
 // Usage: npm run local               (keeps existing data)
 //        npm run local -- --fresh    (wipes the database and reseeds first)
 //        npm run local -- --db-only  (steps 1-3, then exits; used by `npm test`)
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { copyFile, access } from "node:fs/promises";
+import net from "node:net";
+import { compose } from "./compose.js";
 
 const root = new URL("..", import.meta.url);
 const fresh = process.argv.includes("--fresh");
@@ -28,6 +31,23 @@ const run = (cmd, args, env = {}) =>
 
 const step = (text) => console.log(`\n▶ ${text}`);
 
+const portInUse = (port) =>
+  new Promise((resolve) => {
+    const socket = net.connect({ host: "127.0.0.1", port }, () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on("error", () => resolve(false));
+  });
+
+const ourContainerRunning = () => {
+  try {
+    return execFileSync("docker", ["ps", "-q", "--filter", "name=^extract-db$"], { encoding: "utf8" }).trim() !== "";
+  } catch {
+    return false;
+  }
+};
+
 try {
   try {
     await access(new URL(".env", root));
@@ -36,11 +56,20 @@ try {
     await copyFile(new URL(".env.example", root), new URL(".env", root));
   }
 
-  const { config } = await import("dotenv");
-  config({ path: new URL(".env", root).pathname });
+  // loads .env, then points DB_* at the local Docker database (never the one in .env)
+  const { LOCAL_DB } = await import("./use-local-db.js");
 
-  step("Starting the database");
-  await run("docker", ["compose", "up", "-d", "--wait", "db"]);
+  step(`Starting the local database (localhost:${LOCAL_DB.DB_PORT})`);
+  if (!ourContainerRunning() && (await portInUse(Number(LOCAL_DB.DB_PORT)))) {
+    throw new Error(
+      `Port ${LOCAL_DB.DB_PORT} is already in use by something else. ` +
+        "Set LOCAL_DB_PORT=<free port> in .env and try again."
+    );
+  }
+  await compose(["up", "-d", "db"], { ...process.env, LOCAL_DB_PORT: LOCAL_DB.DB_PORT });
+  console.log("  waiting for it to accept connections...");
+  const { connect: waitFor } = await import("./connect.js");
+  await (await waitFor({ timeoutMs: 120_000 })).end();
 
   if (fresh) {
     step("Wiping the database (--fresh)");

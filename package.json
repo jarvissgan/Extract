@@ -6,16 +6,16 @@
    "scripts": {
       "local": "node scripts/local.js",
       "dev": "cross-env NODE_ENV=development concurrently \"vite --clearScreen false\" \"nodemon -r dotenv/config server.js\"",
-      "test": "node scripts/local.js --db-only && cross-env AUTH_MODE=dev node -r dotenv/config --test --test-concurrency=1 \"tests/**/*.test.js\"",
+      "test": "node scripts/local.js --db-only && node --import ./scripts/use-local-db.js --test --test-concurrency=1 \"tests/**/*.test.js\"",
       "test:e2e": "playwright test",
       "lint": "eslint .",
       "typecheck": "tsc --noEmit -p .",
       "build": "vite build",
       "preview": "vite preview",
       "db:migrate": "node -r dotenv/config scripts/migrate.js",
-      "db:seed": "node -r dotenv/config scripts/seed.js",
-      "db:reset": "node -r dotenv/config scripts/db-reset.js",
-      "db:down": "docker compose down"
+      "db:seed": "node scripts/seed.js",
+      "db:reset": "node scripts/db-reset.js",
+      "db:down": "node scripts/compose.js down"
    },
    "dependencies": {
       "@auth0/auth0-react": "^2.3.0",
