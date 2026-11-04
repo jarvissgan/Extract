@@ -32,6 +32,6 @@ export async function connect({ timeoutMs = 60_000, multipleStatements = false }
 
   throw new Error(
     `Could not connect to ${process.env.DB_HOST}:${process.env.DB_PORT} (${lastError?.code || lastError?.message}). ` +
-      "Is the database running? Try `npm run db:up`."
+      "Is the database running? Try `npm run local -- --db-only`."
   );
 }

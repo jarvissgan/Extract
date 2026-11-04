@@ -4,17 +4,15 @@
    "version": "0.0.0",
    "type": "module",
    "scripts": {
+      "local": "node scripts/local.js",
       "dev": "cross-env NODE_ENV=development concurrently \"vite --clearScreen false\" \"nodemon -r dotenv/config server.js\"",
-      "dev:offline": "cross-env AUTH_MODE=dev VITE_AUTH_MODE=dev npm run dev",
-      "build": "vite build",
+      "test": "node scripts/local.js --db-only && cross-env AUTH_MODE=dev node -r dotenv/config --test --test-concurrency=1 \"tests/**/*.test.js\"",
       "lint": "eslint .",
+      "build": "vite build",
       "preview": "vite preview",
-      "db:up": "docker compose up -d --wait db",
-      "db:down": "docker compose down",
-      "db:reset": "node -r dotenv/config scripts/db-reset.js",
       "db:seed": "node -r dotenv/config scripts/seed.js",
-      "setup:dev": "npm run db:up && npm run db:seed",
-      "test:api": "cross-env AUTH_MODE=dev node -r dotenv/config --test --test-concurrency=1 \"tests/**/*.test.js\""
+      "db:reset": "node -r dotenv/config scripts/db-reset.js",
+      "db:down": "docker compose down"
    },
    "dependencies": {
       "@auth0/auth0-react": "^2.3.0",
