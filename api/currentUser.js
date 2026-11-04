@@ -8,6 +8,9 @@ const emailBySub = new Map();
 const issuerBaseURL = () => (process.env.AUTH0_ISSUER_BASE_URL || "").replace(/\/+$/, "");
 
 async function fetchEmail(req) {
+  // set by the offline dev auth middleware (AUTH_MODE=dev)
+  if (req.devEmail) return req.devEmail;
+
   const sub = req.auth.payload.sub;
   if (emailBySub.has(sub)) return emailBySub.get(sub);
 

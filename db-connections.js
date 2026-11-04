@@ -1,16 +1,13 @@
 import mysql from "mysql";
 
-const db = mysql.createConnection({
+// A pool reconnects on its own if the server drops idle connections.
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-});
-
-db.connect((err) => {
-  if (err) throw err;
-  console.log("Connected to db");
+  connectionLimit: 10,
 });
 
 // promise wrapper so route handlers can use async/await
@@ -19,4 +16,6 @@ const query = (sql, params = []) =>
     db.query(sql, params, (err, results) => (err ? reject(err) : resolve(results)));
   });
 
-export { db, query };
+const closeDb = () => new Promise((resolve) => db.end(() => resolve()));
+
+export { db, query, closeDb };

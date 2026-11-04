@@ -1,0 +1,25 @@
+# Local MariaDB for development: `npm run db:up`
+# Reads DB_* values from .env. The schema is applied on first start.
+services:
+  db:
+    image: mariadb:11
+    container_name: extract-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-extract}
+      MARIADB_USER: ${DB_USER:-extract}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-extract}
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - extract-db-data:/var/lib/mysql
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  extract-db-data:

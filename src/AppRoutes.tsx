@@ -1,9 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router";
-import { AppShell, Burger, Center, Group, Loader, Text } from "@mantine/core";
+import { AppShell, Badge, Burger, Center, Group, Loader, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import Sidebar from "./components/Sidebar";
 import { RequireAccount, RequireAuth } from "./components/RouteGuards";
+import { DEV_AUTH } from "./auth/devAuth";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Home = lazy(() => import("./pages/Home"));
@@ -11,6 +12,8 @@ const Transactions = lazy(() => import("./pages/Transactions"));
 const TransactionDetail = lazy(() => import("./pages/TransactionDetail"));
 const UserSetup = lazy(() => import("./pages/UserSetup"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+// only bundled on the dev server with VITE_AUTH_MODE=dev
+const DevLogin = DEV_AUTH ? lazy(() => import("./pages/DevLogin")) : null;
 
 const PageLoader = () => (
   <Center h="60vh">
@@ -31,6 +34,11 @@ const AppRoutes = () => {
         <Group h="100%" px="md" gap="sm">
           <Burger opened={navOpened} onClick={toggle} hiddenFrom="sm" size="sm" />
           <Text fw={700}>Extract</Text>
+          {DEV_AUTH && (
+            <Badge color="yellow" variant="light">
+              Dev auth
+            </Badge>
+          )}
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="md">
@@ -40,6 +48,7 @@ const AppRoutes = () => {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Landing />} />
+            {DevLogin && <Route path="/dev-login" element={<DevLogin />} />}
             <Route element={<RequireAuth />}>
               <Route path="/setup" element={<UserSetup />} />
               <Route element={<RequireAccount />}>
