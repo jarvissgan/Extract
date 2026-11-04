@@ -31,6 +31,21 @@ test("no page scrolls sideways on a phone, in any appearance", async ({ page }) 
     }
   }
 
+  // the tab bar stays pinned to the bottom of the screen, and the end of a long page
+  // can be scrolled fully above it
+  await nav(page).getByRole("link", { name: "Reports" }).click();
+  const lastLine = page.getByText("The current month is included");
+  await expect(lastLine).toBeVisible();
+  const viewportHeight = page.viewportSize()!.height;
+  for (const y of [0, 600, 100_000]) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    const bar = (await nav(page).boundingBox())!;
+    expect(Math.round(bar.y + bar.height), `tab bar at scroll ${y}`).toBeGreaterThanOrEqual(viewportHeight - 1);
+  }
+  const bar = (await nav(page).boundingBox())!;
+  const text = (await lastLine.boundingBox())!;
+  expect(text.y + text.height, "last line clears the tab bar").toBeLessThanOrEqual(bar.y);
+
   await page.getByRole("button", { name: "Account menu" }).click();
   await page.getByRole("menuitem", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();

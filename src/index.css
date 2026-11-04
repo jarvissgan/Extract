@@ -118,6 +118,11 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
   height: calc(64px + env(safe-area-inset-bottom)) !important;
 }
+/* ...and the page scrolls far enough that its last line clears the (taller) bar.
+   --app-shell-footer-offset is 0 when there's no tab bar, and the inset is 0 off iPhones. */
+.mantine-AppShell-main {
+  padding-bottom: calc(var(--app-shell-footer-offset, 0rem) + env(safe-area-inset-bottom)) !important;
+}
 .mantine-AppShell-header {
   padding-top: env(safe-area-inset-top);
 }
