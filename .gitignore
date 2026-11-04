@@ -28,3 +28,6 @@ dist-ssr
 ## Panda
 styled-system
 styled-system-studio
+# Playwright
+test-results/
+playwright-report/

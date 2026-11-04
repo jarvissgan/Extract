@@ -21,7 +21,7 @@ export default tseslint.config(
 
   // Frontend (React + TypeScript)
   {
-    files: ["src/**/*.{ts,tsx}", "vite.config.ts"],
+    files: ["src/**/*.{ts,tsx}", "vite.config.ts", "playwright.config.ts", "tests/e2e/**/*.ts"],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: "latest",
