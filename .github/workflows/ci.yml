@@ -25,6 +25,16 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
+      # the production image (deploy/README.md) must keep building
+      - name: Build production image
+        run: >
+          docker build
+          --build-arg VITE_authDomain=example.us.auth0.com
+          --build-arg VITE_authClientID=ci
+          --build-arg VITE_authApiAudience=https://ci
+          --build-arg VITE_redirectURL=https://ci.example.com/setup
+          -t extract-app:ci .
+
       # uses the local Docker database and offline login, same as on a dev machine
       - run: cp .env.example .env
       - name: API tests

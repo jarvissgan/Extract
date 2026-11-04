@@ -64,6 +64,10 @@ Schema changes live in `db/migrations` as numbered SQL files, applied in order a
 - To change the schema, add a new file (e.g. `004_add_tags.sql`). Never edit one that has already been applied.
 - **Existing databases:** run `npm run db:migrate` once. `001_initial.sql` only creates tables that don't exist, so it's safe on a database that already has data.
 
+## Deploying
+
+See [`deploy/README.md`](deploy/README.md): one small server running Docker, HTTPS through a shared Caddy, encrypted nightly backups, and scripts for setup, updates, restores and rotating the database password.
+
 ## Environment
 Copy `.env.example` to `.env` and fill it in.
 
