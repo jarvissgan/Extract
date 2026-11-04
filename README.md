@@ -20,7 +20,7 @@ Works on phones: bottom tab bar, full-screen forms, lists instead of tables, and
 - Frontend: React 19, Vite 6, Mantine 8, TypeScript
 - Auth: Auth0
 - API: Express, validated with zod (shared with the frontend in `shared/schemas.js`)
-- Database: MariaDB 11 via `mysql2`
+- Database: MariaDB 11 via `mysql2` (MySQL 8 works too; CI tests both)
 
 ## Quick start (offline, no Auth0 needed)
 Needs Node 22+, Docker, and Docker Compose (the `docker compose` plugin from Docker Desktop, or the standalone `docker-compose`, e.g. `brew install docker-compose`).

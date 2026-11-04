@@ -39,8 +39,30 @@ EXECUTE create_recurring;
 DEALLOCATE PREPARE create_recurring;
 
 -- Generated transactions remember which rule and month they came from, so each
--- month is only ever generated once.
-ALTER TABLE `transaction`
-  ADD COLUMN IF NOT EXISTS recurring_uuid CHAR(36) NULL,
-  ADD COLUMN IF NOT EXISTS recurring_period CHAR(7) NULL,
-  ADD UNIQUE INDEX IF NOT EXISTS uq_transaction_recurring (recurring_uuid, recurring_period);
+-- month is only ever generated once. (Checked first, as MySQL has no ADD ... IF NOT EXISTS.)
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.COLUMNS
+   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'transaction' AND COLUMN_NAME = 'recurring_uuid') = 0,
+  'ALTER TABLE `transaction` ADD COLUMN recurring_uuid CHAR(36) NULL',
+  'DO 0');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.COLUMNS
+   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'transaction' AND COLUMN_NAME = 'recurring_period') = 0,
+  'ALTER TABLE `transaction` ADD COLUMN recurring_period CHAR(7) NULL',
+  'DO 0');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.STATISTICS
+   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'transaction' AND INDEX_NAME = 'uq_transaction_recurring') = 0,
+  'ALTER TABLE `transaction` ADD UNIQUE INDEX uq_transaction_recurring (recurring_uuid, recurring_period)',
+  'DO 0');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

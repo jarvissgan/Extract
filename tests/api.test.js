@@ -361,6 +361,17 @@ test("suggests frequent transactions with their latest amount", async () => {
   assert.equal((await api("GET", "/transaction/suggestions", { as: alice })).body.some((s) => s.name === "Taxi home"), false);
 });
 
+test("a database error while looking up the user is a 500, not a 401", async () => {
+  // simulate a schema problem like a missing column
+  await query("ALTER TABLE users RENAME COLUMN email TO email_tmp");
+  try {
+    const res = await api("GET", "/user", { as: `nobody-${run}@test.local` });
+    assert.equal(res.status, 500);
+  } finally {
+    await query("ALTER TABLE users RENAME COLUMN email_tmp TO email");
+  }
+});
+
 test("users cannot see or change other users' transactions", async () => {
   const tx = state.aliceTx;
   assert.equal((await api("GET", `/transaction/user/${state.aliceSqid}`, { as: bob })).status, 403);

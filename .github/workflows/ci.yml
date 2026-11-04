@@ -54,3 +54,36 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  # Your local database may be MySQL rather than MariaDB: migrations and the API must work on both.
+  mysql:
+    name: API tests on MySQL 8
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: extract
+          MYSQL_USER: extract
+          MYSQL_PASSWORD: extract
+        ports: ["3308:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      LOCAL_DB_PORT: 3308
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Migrations
+        run: node --import ./scripts/use-local-db.js scripts/migrate.js
+      - name: Migrations again (must be a no-op)
+        run: node --import ./scripts/use-local-db.js scripts/migrate.js
+      - name: API tests
+        run: node --import ./scripts/use-local-db.js --test --test-concurrency=1 "tests/**/*.test.js"
