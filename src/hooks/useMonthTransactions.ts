@@ -23,14 +23,16 @@ export const useSelectedMonth = () => {
   return { month, setMonth };
 };
 
+// Loads the signed-in user's transactions for one month of the browser's local time.
 export const useMonthTransactions = (month: Dayjs) => {
   const { sqid, transactionsVersion } = useCurrentUser();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const startDate = month.startOf("month").format("YYYY-MM-DD 00:00:00");
-  const endDate = month.endOf("month").format("YYYY-MM-DD 23:59:59");
+  // exact instants, so the server (which stores UTC) filters on the user's local month
+  const startDate = month.startOf("month").toISOString();
+  const endDate = month.endOf("month").toISOString();
 
   useEffect(() => {
     if (!sqid) return;

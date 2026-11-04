@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
+  Badge,
   Button,
   Center,
   Divider,
@@ -14,13 +15,16 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { DateTimePicker } from "@mantine/dates";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconTrash } from "@tabler/icons-react";
+import { IconArrowLeft, IconRepeat, IconTrash } from "@tabler/icons-react";
+import dayjs from "dayjs";
 import api, { errorStatus } from "../lib/api";
-import { CATEGORY_OPTIONS, formatDateTime, toTransaction } from "../lib/transactions";
-import type { Category, Transaction, TransactionRow } from "../lib/types";
+import { formatDateTime, toTransaction } from "../lib/transactions";
+import type { Transaction, TransactionRow } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
+import { fieldErrors, transactionSchema } from "../../shared/schemas.js";
 
 const errorMessage = (error: unknown) => {
   switch (errorStatus(error)) {
@@ -37,7 +41,7 @@ const errorMessage = (error: unknown) => {
 
 const TransactionDetail = () => {
   const { transaction_uuid } = useParams();
-  const { sqid, notifyTransactionsChanged } = useCurrentUser();
+  const { sqid, categories, currencySymbol, notifyTransactionsChanged } = useCurrentUser();
   const navigate = useNavigate();
   const listPath = `/transactions/${sqid}`;
 
@@ -45,17 +49,20 @@ const TransactionDetail = () => {
   const [loadFailed, setLoadFailed] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState<number | string>(0);
-  const [category, setCategory] = useState<Category>("other");
+  const [category, setCategory] = useState("other");
   const [note, setNote] = useState("");
+  const [date, setDate] = useState<string | null>(null);
 
   const fillForm = (t: Transaction) => {
     setName(t.name);
     setAmount(t.amount);
     setCategory(t.category);
     setNote(t.note);
+    setDate(dayjs(t.createdAt).format("YYYY-MM-DD HH:mm:ss"));
   };
 
   useEffect(() => {
@@ -80,24 +87,36 @@ const TransactionDetail = () => {
 
   const cancelEdit = () => {
     if (original) fillForm(original);
+    setErrors({});
     setEditing(false);
   };
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || amount === "" || !Number.isFinite(Number(amount))) {
-      notifications.show({ message: "Please enter a name and valid amount.", color: "red" });
+    const parsed = transactionSchema.safeParse({
+      transaction_name: name,
+      transaction_amount: amount,
+      transaction_details: { category, transaction_note: note },
+      transaction_date: date ? dayjs(date).toISOString() : undefined,
+    });
+    if (!parsed.success) {
+      setErrors(fieldErrors(parsed.error));
       return;
     }
+    setErrors({});
 
     setSaving(true);
     try {
-      await api.put(`/transaction/${transaction_uuid}`, {
-        transaction_name: name.trim(),
-        transaction_amount: Number(amount),
-        transaction_details: { category, transaction_note: note },
-      });
-      const updated = { ...original!, name: name.trim(), amount: Number(amount), category, note };
+      await api.put(`/transaction/${transaction_uuid}`, parsed.data);
+      const updated: Transaction = {
+        ...original!,
+        name: parsed.data.transaction_name,
+        amount: parsed.data.transaction_amount,
+        category,
+        note,
+        createdAt: parsed.data.transaction_date ?? original!.createdAt,
+        updatedAt: new Date().toISOString(),
+      };
       setOriginal(updated);
       setEditing(false);
       notifyTransactionsChanged();
@@ -155,6 +174,11 @@ const TransactionDetail = () => {
             Back
           </Button>
           <Title order={3}>Transaction details</Title>
+          {original.recurring && (
+            <Badge variant="light" leftSection={<IconRepeat size={12} />}>
+              Recurring
+            </Badge>
+          )}
         </Group>
         {!editing && (
           <Group gap="xs">
@@ -168,47 +192,62 @@ const TransactionDetail = () => {
 
       <Divider />
 
-      <form onSubmit={save}>
+      <form onSubmit={save} noValidate>
         <Stack>
           <TextInput
             required
             readOnly={!editing}
             label="Name"
             value={name}
+            error={errors.transaction_name}
             onChange={(e) => setName(e.currentTarget.value)}
           />
           <NumberInput
             required
             readOnly={!editing}
             label="Amount"
-            prefix="$"
+            prefix={currencySymbol}
             thousandSeparator=","
             decimalScale={2}
             fixedDecimalScale
             allowNegative={false}
             value={amount}
+            error={errors.transaction_amount}
             onChange={setAmount}
           />
-          <Select
-            readOnly={!editing}
-            label="Category"
-            value={category}
-            onChange={(value) => setCategory((value as Category) || "other")}
-            data={CATEGORY_OPTIONS}
-            allowDeselect={false}
-          />
+          <Group grow align="flex-start">
+            <Select
+              readOnly={!editing}
+              label="Category"
+              value={category}
+              onChange={(value) => setCategory(value || "other")}
+              data={categories.map(({ value, label }) => ({ value, label }))}
+              allowDeselect={false}
+              error={errors["transaction_details.category"]}
+            />
+            <DateTimePicker
+              readOnly={!editing}
+              label="Date"
+              value={date}
+              onChange={setDate}
+              valueFormat="D MMM YYYY, h:mm A"
+              maxDate={new Date()}
+            />
+          </Group>
           <Textarea
             readOnly={!editing}
             label="Note"
             autosize
             minRows={3}
             value={note}
+            error={errors["transaction_details.transaction_note"]}
             onChange={(e) => setNote(e.currentTarget.value)}
           />
-          <Text size="sm" c="dimmed">
-            Created {formatDateTime(original.createdAt)}
-            {original.updatedAt ? ` · Updated ${formatDateTime(original.updatedAt)}` : ""}
-          </Text>
+          {original.updatedAt && (
+            <Text size="sm" c="dimmed">
+              Last updated {formatDateTime(original.updatedAt)}
+            </Text>
+          )}
           {editing && (
             <Group justify="flex-end">
               <Button variant="default" onClick={cancelEdit}>

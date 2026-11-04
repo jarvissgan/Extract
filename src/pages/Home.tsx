@@ -7,18 +7,17 @@ import StatCard from "../components/StatCard";
 import TransactionTable from "../components/TransactionTable";
 import { useCurrentUser } from "../context/UserContext";
 import { useMonthTransactions, useSelectedMonth } from "../hooks/useMonthTransactions";
-import { CATEGORIES, formatMoney } from "../lib/transactions";
 
 const Home = () => {
   const { user } = useAuth0();
-  const { monthlyBudget } = useCurrentUser();
+  const { monthlyBudget, categories, formatMoney } = useCurrentUser();
   const { month, setMonth } = useSelectedMonth();
   const { transactions, total, loading, error } = useMonthTransactions(month);
 
   const isCurrentMonth = month.isSame(dayjs(), "month");
   const monthName = month.format("MMMM YYYY");
 
-  const byCategory = CATEGORIES.map((c) => ({
+  const byCategory = categories.map((c) => ({
     name: c.label,
     color: c.color,
     value: transactions.filter((t) => t.category === c.value).reduce((s, t) => s + t.amount, 0),

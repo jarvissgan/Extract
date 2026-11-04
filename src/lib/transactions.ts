@@ -1,52 +1,49 @@
 import dayjs from "dayjs";
-import type { Category, Transaction, TransactionDetails, TransactionRow } from "./types";
-
-export const CATEGORIES: { value: Category; label: string; color: string }[] = [
-  { value: "food", label: "Food", color: "orange.6" },
-  { value: "housing", label: "Housing", color: "blue.6" },
-  { value: "transport", label: "Transport", color: "teal.6" },
-  { value: "other", label: "Other", color: "gray.6" },
-];
-
-export const CATEGORY_OPTIONS = CATEGORIES.map(({ value, label }) => ({ value, label }));
-
-const findCategory = (value: Category) => CATEGORIES.find((c) => c.value === value);
-
-export const categoryLabel = (value: Category) => findCategory(value)?.label ?? "Other";
-export const categoryColor = (value: Category) => findCategory(value)?.color ?? "gray.6";
-
-const parseDetails = (raw: TransactionRow["transaction_details"]): TransactionDetails => {
-  if (!raw) return {};
-  if (typeof raw === "object") return raw;
-  try {
-    return JSON.parse(raw) ?? {};
-  } catch {
-    return {};
-  }
-};
+import { parseJson, type CategoryOption, type Transaction, type TransactionRow } from "./types";
 
 export const toTransaction = (row: TransactionRow): Transaction => {
-  const details = parseDetails(row.transaction_details);
-  const category =
-    details.category && findCategory(details.category) ? details.category : "other";
+  const details = parseJson(row.transaction_details, {});
   return {
     uuid: row.transaction_uuid,
     name: row.transaction_name,
     amount: Number(row.transaction_amount) || 0,
-    category,
+    category: details.category || "other",
     note: details.transaction_note ?? "",
     createdAt: row.created_timestamp,
     updatedAt: row.updated_timestamp,
+    recurring: !!row.recurring_uuid,
   };
 };
 
-const money = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const UNKNOWN_CATEGORY = { label: "Other", color: "gray.6" };
 
-export const formatMoney = (value: number) =>
-  `${value < 0 ? "-" : ""}$${money.format(Math.abs(value))}`;
+export const findCategory = (categories: CategoryOption[], value: string) =>
+  categories.find((c) => c.value === value) ?? { value, ...UNKNOWN_CATEGORY };
+
+export const makeMoneyFormatter = (currency: string) => {
+  let format: Intl.NumberFormat;
+  try {
+    format = new Intl.NumberFormat("en-US", { style: "currency", currency });
+  } catch {
+    format = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  }
+  return (value: number) => format.format(value);
+};
+
+// "$", "S$", "€"... for input prefixes
+export const currencySymbol = (currency: string) => {
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency })
+        .formatToParts(0)
+        .find((p) => p.type === "currency")?.value ?? "$"
+    );
+  } catch {
+    return "$";
+  }
+};
 
 export const formatDateTime = (value: string | null) =>
   value ? dayjs(value).format("D MMM YYYY, h:mm A") : "—";
+
+export const formatDate = (value: string | null) => (value ? dayjs(value).format("D MMM YYYY") : "—");

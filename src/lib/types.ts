@@ -1,29 +1,44 @@
-export type Category = "other" | "food" | "housing" | "transport";
+// JSON columns may arrive as strings or already parsed, depending on the database driver.
+type JsonColumn<T> = string | T | null;
+
+export interface CategoryOption {
+  value: string;
+  label: string;
+  color: string;
+}
 
 export interface TransactionDetails {
-  category?: Category;
+  category?: string;
   transaction_note?: string;
 }
 
-// Row as returned by the API (JSON columns arrive as strings).
 export interface TransactionRow {
   transaction_uuid: string;
   user_id: number;
   transaction_name: string;
   transaction_amount: number | string;
-  transaction_details: string | TransactionDetails | null;
+  transaction_details: JsonColumn<TransactionDetails>;
   created_timestamp: string;
   updated_timestamp: string | null;
+  recurring_uuid?: string | null;
 }
 
 export interface Transaction {
   uuid: string;
   name: string;
   amount: number;
-  category: Category;
+  category: string;
   note: string;
   createdAt: string;
   updatedAt: string | null;
+  recurring: boolean;
+}
+
+export interface UserPreferences {
+  budgets?: { monthly?: number | "" };
+  notifications?: { email?: boolean };
+  currency?: string;
+  categories?: CategoryOption[];
 }
 
 export interface UserRow {
@@ -31,10 +46,28 @@ export interface UserRow {
   user_sqid: string;
   username: string;
   email: string;
-  preference_json: string | null;
+  preference_json: JsonColumn<UserPreferences>;
+  account_status: JsonColumn<{ status: string }>;
 }
 
-export interface UserPreferences {
-  budgets?: { monthly?: number | string };
-  notifications?: { email?: boolean };
+export interface RecurringRule {
+  recurring_uuid: string;
+  name: string;
+  amount: number;
+  category: string;
+  note: string | null;
+  day_of_month: number;
+  active: number | boolean;
+  start_period: string;
+  last_generated_period: string | null;
 }
+
+export const parseJson = <T,>(value: JsonColumn<T> | undefined, fallback: T): T => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value !== "string") return value;
+  try {
+    return (JSON.parse(value) as T) ?? fallback;
+  } catch {
+    return fallback;
+  }
+};

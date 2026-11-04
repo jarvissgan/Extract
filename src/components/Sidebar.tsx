@@ -5,6 +5,7 @@ import {
   IconLogin,
   IconLogout,
   IconMoon,
+  IconSettings,
   IconSun,
 } from "@tabler/icons-react";
 import { useLocation, useNavigate } from "react-router";
@@ -29,6 +30,7 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
     ? [
         { label: "Home", icon: IconHome, to: `/home/${sqid}` },
         { label: "Transactions", icon: IconListDetails, to: `/transactions/${sqid}` },
+        { label: "Settings", icon: IconSettings, to: "/settings" },
       ]
     : [];
 

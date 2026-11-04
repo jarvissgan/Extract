@@ -11,6 +11,7 @@ const Home = lazy(() => import("./pages/Home"));
 const Transactions = lazy(() => import("./pages/Transactions"));
 const TransactionDetail = lazy(() => import("./pages/TransactionDetail"));
 const UserSetup = lazy(() => import("./pages/UserSetup"));
+const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 // only bundled on the dev server with VITE_AUTH_MODE=dev
 const DevLogin = DEV_AUTH ? lazy(() => import("./pages/DevLogin")) : null;
@@ -55,6 +56,7 @@ const AppRoutes = () => {
                 <Route path="/home/:sqid" element={<Home />} />
                 <Route path="/transactions/:sqid" element={<Transactions />} />
                 <Route path="/transactions/:sqid/:transaction_uuid" element={<TransactionDetail />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />

@@ -9,7 +9,9 @@ import {
 } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import api, { setAccessTokenGetter } from "../lib/api";
-import type { UserPreferences, UserRow } from "../lib/types";
+import { currencySymbol, makeMoneyFormatter } from "../lib/transactions";
+import { parseJson, type CategoryOption, type UserPreferences, type UserRow } from "../lib/types";
+import { userCategories } from "../../shared/schemas.js";
 
 type Status = "loading" | "signedOut" | "needsSetup" | "ready" | "error";
 
@@ -17,7 +19,12 @@ interface UserContextValue {
   status: Status;
   user: UserRow | null;
   sqid: string | null;
+  preferences: UserPreferences;
   monthlyBudget: number | null;
+  categories: CategoryOption[];
+  currency: string;
+  currencySymbol: string;
+  formatMoney: (value: number) => string;
   refreshUser: () => Promise<void>;
   // Goes up by one whenever transactions change, so lists know to refetch.
   transactionsVersion: number;
@@ -25,18 +32,6 @@ interface UserContextValue {
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
-
-const parseBudget = (user: UserRow | null): number | null => {
-  if (!user?.preference_json) return null;
-  try {
-    const monthly = (JSON.parse(user.preference_json) as UserPreferences).budgets?.monthly;
-    if (monthly === undefined || monthly === "") return null;
-    const budget = Number(monthly);
-    return Number.isFinite(budget) ? budget : null;
-  } catch {
-    return null;
-  }
-};
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
@@ -75,18 +70,25 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const notifyTransactionsChanged = useCallback(() => setTransactionsVersion((v) => v + 1), []);
 
-  const value = useMemo<UserContextValue>(
-    () => ({
+  const value = useMemo<UserContextValue>(() => {
+    const preferences = parseJson<UserPreferences>(user?.preference_json, {});
+    const monthly = preferences.budgets?.monthly;
+    const currency = preferences.currency || "USD";
+    return {
       status,
       user,
       sqid: user?.user_sqid ?? null,
-      monthlyBudget: parseBudget(user),
+      preferences,
+      monthlyBudget: monthly === undefined || monthly === "" || !Number.isFinite(Number(monthly)) ? null : Number(monthly),
+      categories: userCategories(preferences),
+      currency,
+      currencySymbol: currencySymbol(currency),
+      formatMoney: makeMoneyFormatter(currency),
       refreshUser,
       transactionsVersion,
       notifyTransactionsChanged,
-    }),
-    [status, user, refreshUser, transactionsVersion, notifyTransactionsChanged]
-  );
+    };
+  }, [status, user, refreshUser, transactionsVersion, notifyTransactionsChanged]);
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
