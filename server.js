@@ -2,6 +2,9 @@ import { createApp } from "./app.js";
 
 const port = process.env.PORT || 3000;
 
-createApp().listen(port, () =>
-  console.log(`UI hosted on http://localhost:5173\nServer hosted on http://localhost:${port}`)
-);
+const server = createApp().listen(port, () => console.log(`Extract API listening on port ${port}`));
+
+// let Docker stop the container cleanly (finish in-flight requests)
+for (const signal of ["SIGTERM", "SIGINT"]) {
+  process.on(signal, () => server.close(() => process.exit(0)));
+}

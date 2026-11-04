@@ -1,0 +1,13 @@
+# Global settings. Each app's site lives in sites/<app>.caddy, e.g.
+#
+#   bungo.legallyalive.com {
+#       encode zstd gzip
+#       reverse_proxy bungo:8080
+#   }
+#
+# then: docker exec caddy caddy reload --config /etc/caddy/Caddyfile
+{
+	# email {$ACME_EMAIL}
+}
+
+import /etc/caddy/sites/*.caddy

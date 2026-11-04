@@ -1,0 +1,76 @@
+# Production: the Extract app and its MariaDB. Run through the deploy/*.sh scripts, which
+# pass deploy/.env (server-only secrets). The shared Caddy (deploy/caddy, installed to
+# /opt/caddy) handles HTTPS and forwards extract.<your domain> to the app.
+name: extract
+
+services:
+  app:
+    build:
+      context: ..
+      args:
+        # public Auth0 SPA settings, baked into the website at build time
+        VITE_authDomain: ${AUTH0_DOMAIN:?set AUTH0_DOMAIN in deploy/.env}
+        VITE_authClientID: ${AUTH0_CLIENT_ID:?set AUTH0_CLIENT_ID in deploy/.env}
+        VITE_authApiAudience: ${AUTH0_AUDIENCE:?set AUTH0_AUDIENCE in deploy/.env}
+        VITE_redirectURL: https://${APP_DOMAIN:?set APP_DOMAIN in deploy/.env}/setup
+        VITE_axiosBaseUrl: /api
+    image: extract-app:latest
+    container_name: extract-app
+    restart: unless-stopped
+    # only what the app needs: no root or backup passwords
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      TRUST_PROXY: 1
+      CORS_ORIGIN: https://${APP_DOMAIN}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      AUTH0_ISSUER_BASE_URL: https://${AUTH0_DOMAIN}/
+      AUTH0_TOKEN_SIGNING_ALG: RS256
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-300}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: extract
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in deploy/.env}
+      DB_DATABASE: extract
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      internal:
+      web:
+        aliases: [extract]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  db:
+    image: mariadb:11
+    container_name: extract-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: extract
+      MARIADB_USER: extract
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD in deploy/.env}
+    # no `ports:`, so the database is unreachable from outside the server
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  mariadb-data:
+
+networks:
+  # app <-> database only
+  internal:
+  # shared with Caddy (created by setup.sh)
+  web:
+    external: true

@@ -31,3 +31,6 @@ styled-system-studio
 # Playwright
 test-results/
 playwright-report/
+
+# production secrets (server only)
+deploy/.env

@@ -1,0 +1,27 @@
+# Shared reverse proxy for every app on this server: HTTPS certificates are automatic.
+# setup.sh copies this folder to /opt/caddy. Each app adds a file in /opt/caddy/sites/.
+name: caddy
+
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [web]
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  web:
+    external: true
