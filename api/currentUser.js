@@ -73,6 +73,12 @@ export async function resolveCurrentUser(req, res, next) {
     };
     next();
   } catch (err) {
+    // Database problems (e.g. a missing column) are server errors, not "not signed in";
+    // reporting them as 401 hides the real cause.
+    if (err.sqlMessage || err.code?.startsWith?.("ER_") || err.code === "ECONNREFUSED") {
+      console.error("Database error while looking up the signed-in user:", err.message);
+      return res.status(500).json({ error: "Server error" });
+    }
     console.error("Unable to resolve current user:", err.message);
     res.status(401).json({ error: "Unable to identify the signed-in user." });
   }

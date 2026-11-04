@@ -37,6 +37,9 @@ Most use is on phones. Treat 390px wide as the main layout and widen from there.
 - **Schema changes:** add a new numbered file in `db/migrations/`; never edit an applied one.
   Copy `users.user_id`'s type for foreign keys (see `003_recurring.sql`), since existing
   databases may differ from `001_initial.sql`.
+- **Migrations must work on MySQL 8 and MariaDB.** MySQL has no `ADD COLUMN IF NOT EXISTS` or
+  `ADD INDEX IF NOT EXISTS`: check `information_schema` and run the change through a prepared
+  statement (see `002_auth_sub.sql`). CI runs the migrations and API tests on MySQL too.
 - **Security:** every API query is scoped to `req.currentUser`; only `VITE_*` env vars reach the
   browser, so never put secrets in them.
 - **Before pushing:** `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`.
