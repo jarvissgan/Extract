@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   Badge,
   Card,
+  Divider,
   Center,
   Group,
   Loader,
@@ -16,12 +17,14 @@ import { BarChart } from "@mantine/charts";
 import dayjs from "dayjs";
 import { IconPigMoney, IconReceipt2, IconWallet } from "@tabler/icons-react";
 import StatCard from "../components/StatCard";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useCurrentUser } from "../context/UserContext";
 import { useRangeTransactions } from "../hooks/useMonthTransactions";
 import { expensesOf, incomeOf, sumAmounts } from "../lib/transactions";
 
 const Reports = () => {
   const { categories, formatMoney } = useCurrentUser();
+  const isMobile = useIsMobile();
   const [months, setMonths] = useState("6");
   const count = Number(months);
 
@@ -84,6 +87,7 @@ const Reports = () => {
         </div>
         <SegmentedControl
           aria-label="Period"
+          w={{ base: "100%", xs: "auto" }}
           value={months}
           onChange={setMonths}
           data={[
@@ -155,7 +159,38 @@ const Reports = () => {
             </StatCard>
           )}
 
-          {data.categoryRows.length > 0 && (
+          {data.categoryRows.length > 0 && isMobile && (
+            <Card padding={0} shadow="xs">
+              {data.categoryRows.map((c, i) => {
+                const change = c.prev > 0 ? ((c.last - c.prev) / c.prev) * 100 : null;
+                return (
+                  <div key={c.value}>
+                    {i > 0 && <Divider />}
+                    <Stack gap={4} px="md" py="sm">
+                      <Group justify="space-between" wrap="nowrap">
+                        <Badge variant="light" color={c.color}>
+                          {c.label}
+                        </Badge>
+                        <Text fw={700} className="tabular">
+                          {formatMoney(c.total)}
+                        </Text>
+                      </Group>
+                      <Group justify="space-between" wrap="nowrap" gap="xs">
+                        <Text size="xs" c="dimmed">
+                          {formatMoney(c.average)}/month · {formatMoney(c.last)} this month
+                        </Text>
+                        <Text size="xs" fw={600} c={change === null ? "dimmed" : change > 0 ? "red" : "teal"}>
+                          {change === null ? "—" : `${change > 0 ? "+" : ""}${Math.round(change)}%`}
+                        </Text>
+                      </Group>
+                    </Stack>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+
+          {data.categoryRows.length > 0 && !isMobile && (
             <Card padding={0} shadow="xs">
             <Table.ScrollContainer minWidth={520}>
               <Table highlightOnHover verticalSpacing="sm" horizontalSpacing="md">

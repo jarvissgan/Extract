@@ -14,6 +14,8 @@ Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and
   "Add another", undo, and shortcuts (N = add, / = quick add); a floating + button on phones
 - Download all your data as JSON, or delete your account
 
+Works on phones: bottom tab bar, full-screen forms, lists instead of tables, and it can be added to the home screen as an app. See `CLAUDE.md` for the mobile-first rules every change follows.
+
 ## Stack
 - Frontend: React 19, Vite 6, Mantine 8, TypeScript
 - Auth: Auth0
@@ -40,7 +42,7 @@ Click **Log in** and pick a seeded user (`dev@extract.local` or `alice@extract.l
 | `npm run local` | Database + migrations + dummy data + app with offline login. `-- --fresh` wipes and reseeds first |
 | `npm run dev` | App with real Auth0 (uses the database in your `.env`) |
 | `npm test` | Starts the database if needed, then runs the API tests |
-| `npm run test:e2e` | Browser tests with Playwright (starts the app if it isn't running). First time: `npx playwright install chromium` |
+| `npm run test:e2e` | Browser tests with Playwright on desktop and phone sizes (starts the app if it isn't running). First time: `npx playwright install chromium` |
 | `npm run lint` / `typecheck` | ESLint / TypeScript checks |
 | `npm run build` | Production build of the frontend |
 | `npm run db:migrate` | Apply new files in `db/migrations` to **the database in `.env`** |

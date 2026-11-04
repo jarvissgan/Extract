@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   ColorSwatch,
+  Divider,
   Group,
   NumberInput,
   Paper,
@@ -30,6 +31,7 @@ import api from "../lib/api";
 import { findCategory } from "../lib/transactions";
 import { parseJson, type RecurringRule, type TransactionRow, type TransactionType, type UserPreferences } from "../lib/types";
 import { downloadFile } from "../lib/csv";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useCurrentUser } from "../context/UserContext";
 import {
   BUILTIN_CATEGORIES,
@@ -211,7 +213,7 @@ const CategoriesSection = () => {
       </Group>
       <form onSubmit={add}>
         <Group align="flex-end" gap="sm">
-          <TextInput label="New category" placeholder="e.g. Travel" value={label} onChange={(e) => setLabel(e.currentTarget.value)} w={200} />
+          <TextInput label="New category" placeholder="e.g. Travel" value={label} onChange={(e) => setLabel(e.currentTarget.value)} w={{ base: "100%", xs: 200 }} />
           <Select
             label="Color"
             data={CATEGORY_COLORS.map((c) => ({ value: c, label: c.split(".")[0] }))}
@@ -219,7 +221,7 @@ const CategoriesSection = () => {
             onChange={(v) => setColor(v || CATEGORY_COLORS[0])}
             leftSection={<ColorSwatch color={swatch(color)} size={14} />}
             allowDeselect={false}
-            w={140}
+            w={{ base: "100%", xs: 140 }}
           />
           <Button type="submit" leftSection={<IconPlus size={16} />} disabled={!slug(label)}>
             Add
@@ -232,6 +234,7 @@ const CategoriesSection = () => {
 
 const RecurringSection = () => {
   const { categories, currencySymbol, formatMoney, notifyTransactionsChanged } = useCurrentUser();
+  const isMobile = useIsMobile();
   const [rules, setRules] = useState<RecurringRule[]>([]);
   const [type, setType] = useState<TransactionType>("expense");
   const [name, setName] = useState("");
@@ -308,7 +311,39 @@ const RecurringSection = () => {
       title="Recurring transactions"
       description="Bills, subscriptions and salary added automatically every month on the chosen day (the last day of shorter months). Paused rules skip months while paused."
     >
-      {rules.length > 0 && (
+      {rules.length > 0 && isMobile && (
+        <Stack gap={0} mb="md">
+          {rules.map((r, i) => {
+            const c = findCategory(categories, r.category);
+            return (
+              <div key={r.recurring_uuid}>
+                {i > 0 && <Divider />}
+                <Group justify="space-between" wrap="nowrap" py="sm" gap="sm">
+                  <div style={{ minWidth: 0 }}>
+                    <Text fw={600} truncate>
+                      {r.name}{" "}
+                      <Text span fw={600} c={r.transaction_type === "income" ? "teal" : undefined}>
+                        {r.transaction_type === "income" ? "+" : ""}
+                        {formatMoney(Number(r.amount))}
+                      </Text>
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {c.label} · day {r.day_of_month}
+                    </Text>
+                  </div>
+                  <Group gap="xs" wrap="nowrap">
+                    <Switch checked={!!r.active} onChange={() => toggle(r)} aria-label={`${r.name} active`} />
+                    <ActionIcon variant="subtle" color="red" size="lg" onClick={() => remove(r)} aria-label={`Delete ${r.name}`}>
+                      <IconTrash size={18} />
+                    </ActionIcon>
+                  </Group>
+                </Group>
+              </div>
+            );
+          })}
+        </Stack>
+      )}
+      {rules.length > 0 && !isMobile && (
         <Table.ScrollContainer minWidth={520} mb="md">
           <Table verticalSpacing="xs">
             <Table.Thead>
@@ -368,9 +403,9 @@ const RecurringSection = () => {
               setCategory(next === "income" ? "income" : "other");
             }}
             allowDeselect={false}
-            w={110}
+            w={{ base: "100%", xs: 110 }}
           />
-          <TextInput label="Name" placeholder={type === "income" ? "e.g. Salary" : "e.g. Rent"} value={name} onChange={(e) => setName(e.currentTarget.value)} error={errors.name} w={180} />
+          <TextInput label="Name" placeholder={type === "income" ? "e.g. Salary" : "e.g. Rent"} value={name} onChange={(e) => setName(e.currentTarget.value)} error={errors.name} w={{ base: "100%", xs: 180 }} />
           <NumberInput
             label="Amount"
             prefix={currencySymbol}
@@ -380,7 +415,7 @@ const RecurringSection = () => {
             value={amount}
             onChange={setAmount}
             error={errors.amount}
-            w={130}
+            w={{ base: "100%", xs: 130 }}
           />
           <Select
             label="Category"
@@ -388,10 +423,10 @@ const RecurringSection = () => {
             value={category}
             onChange={(v) => setCategory(v || "other")}
             allowDeselect={false}
-            w={150}
+            w={{ base: "100%", xs: 150 }}
           />
-          <NumberInput label="Day of month" min={1} max={31} value={day} onChange={setDay} error={errors.day_of_month} w={110} />
-          <Button type="submit" mt={25} leftSection={<IconPlus size={16} />}>
+          <NumberInput label="Day of month" min={1} max={31} value={day} onChange={setDay} error={errors.day_of_month} w={{ base: "100%", xs: 110 }} />
+          <Button type="submit" mt={{ base: 0, xs: 25 }} w={{ base: "100%", xs: "auto" }} leftSection={<IconPlus size={16} />}>
             Add
           </Button>
         </Group>
@@ -563,14 +598,14 @@ const RulesSection = () => {
       )}
       <form onSubmit={add}>
         <Group align="flex-end" gap="sm">
-          <TextInput label="Name contains" placeholder="e.g. grab" value={pattern} onChange={(e) => setPattern(e.currentTarget.value)} w={200} />
+          <TextInput label="Name contains" placeholder="e.g. grab" value={pattern} onChange={(e) => setPattern(e.currentTarget.value)} w={{ base: "100%", xs: 200 }} />
           <Select
             label="Category"
             data={categories.map(({ value, label }) => ({ value, label }))}
             value={category}
             onChange={(v) => setCategory(v || "other")}
             allowDeselect={false}
-            w={160}
+            w={{ base: "100%", xs: 160 }}
           />
           <Button type="submit" leftSection={<IconPlus size={16} />} disabled={pattern.trim().length < 2 || rules.length >= MAX_RULES}>
             Add rule
@@ -649,7 +684,7 @@ const DataSection = () => {
                 placeholder={user?.email}
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.currentTarget.value)}
-                w={260}
+                w={{ base: "100%", xs: 260 }}
               />
               <Button color="red" disabled={confirmText.trim().toLowerCase() !== user?.email?.toLowerCase()} onClick={deleteAccount}>
                 Delete account

@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { Anchor, Badge, Card, Checkbox, Group, Stack, Table, Text, ThemeIcon, Tooltip, UnstyledButton } from "@mantine/core";
+import { Anchor, Badge, Box, Card, Checkbox, ColorSwatch, Divider, Group, NativeSelect, Stack, Table, Text, ThemeIcon, Tooltip, UnstyledButton, useMantineTheme } from "@mantine/core";
 import { IconChevronDown, IconChevronUp, IconReceipt, IconRepeat, IconSelector } from "@tabler/icons-react";
 import { Link, useNavigate } from "react-router";
 import { findCategory, formatDateTime } from "../lib/transactions";
 import type { Transaction } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
 import { useAppearance } from "../theme/Appearance";
+import { useIsMobile } from "../hooks/useIsMobile";
+import dayjs from "dayjs";
 import { HoneyPot } from "./Pooh";
 
 type SortKey = "name" | "category" | "amount" | "date";
@@ -54,6 +56,8 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
   const { sqid, categories, formatMoney } = useCurrentUser();
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "date", desc: true });
   const { appearance } = useAppearance();
+  const isMobile = useIsMobile();
+  const theme = useMantineTheme();
 
   const onSort = (key: SortKey) =>
     setSort((s) => ({ key, desc: s.key === key ? !s.desc : key === "date" || key === "amount" }));
@@ -102,6 +106,93 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
     else next.add(uuid);
     onSelectedChange!(next);
   };
+
+  // phones: a tappable list instead of a table that would scroll sideways
+  if (isMobile) {
+    const swatch = (color: string) => {
+      const [name, shade] = color.split(".");
+      return theme.colors[name]?.[Number(shade ?? 6)] ?? theme.colors.gray[6];
+    };
+    const SORTS = [
+      { value: "date-desc", label: "Newest first" },
+      { value: "date-asc", label: "Oldest first" },
+      { value: "amount-desc", label: "Largest first" },
+      { value: "name-asc", label: "Name A–Z" },
+    ];
+    return (
+      <Card padding={0} shadow="xs">
+        <Group justify="space-between" px="md" py="xs" wrap="nowrap">
+          {selectable ? (
+            <Checkbox
+              label="Select all"
+              checked={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onChange={() => onSelectedChange!(allSelected ? new Set() : new Set(sorted.map((t) => t.uuid)))}
+            />
+          ) : (
+            <Text size="sm" c="dimmed">
+              {transactions.length} transaction{transactions.length === 1 ? "" : "s"}
+            </Text>
+          )}
+          <NativeSelect
+            aria-label="Sort"
+            size="xs"
+            variant="unstyled"
+            data={SORTS}
+            value={`${sort.key}-${sort.desc ? "desc" : "asc"}`}
+            onChange={(e) => {
+              const [key, dir] = e.currentTarget.value.split("-");
+              setSort({ key: key as SortKey, desc: dir === "desc" });
+            }}
+          />
+        </Group>
+        <Divider />
+        {sorted.map((t, i) => {
+          const to = `/transactions/${sqid}/${t.uuid}`;
+          const category = findCategory(categories, t.category);
+          const isSelected = selectable && selected!.has(t.uuid);
+          return (
+            <Box key={t.uuid} bg={isSelected ? "var(--mantine-primary-color-light)" : undefined}>
+              {i > 0 && <Divider />}
+              <Group gap={0} wrap="nowrap" pl={selectable ? "md" : 0}>
+                {selectable && (
+                  <Checkbox aria-label={`Select ${t.name}`} checked={isSelected} onChange={() => toggle(t.uuid)} />
+                )}
+                <UnstyledButton
+                  component={Link}
+                  to={to}
+                  data-testid="transaction-item"
+                  px="md"
+                  py={10}
+                  mih={60}
+                  style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Group gap={6} wrap="nowrap">
+                      <Text fw={600} truncate>
+                        {t.name}
+                      </Text>
+                      {t.recurring && <IconRepeat size={14} aria-label="Recurring" style={{ flexShrink: 0 }} />}
+                    </Group>
+                    <Group gap={6} wrap="nowrap">
+                      <ColorSwatch color={swatch(category.color)} size={8} withShadow={false} />
+                      <Text size="xs" c="dimmed" truncate>
+                        {category.label} · {dayjs(t.createdAt).format("D MMM, h:mm A")}
+                      </Text>
+                    </Group>
+                  </div>
+                  <Text fw={700} c={t.type === "income" ? "teal" : undefined} className="tabular" style={{ flexShrink: 0 }}>
+                    {t.type === "income" ? "+" : ""}
+                    {formatMoney(t.amount)}
+                  </Text>
+                </UnstyledButton>
+              </Group>
+            </Box>
+          );
+        })}
+      </Card>
+    );
+  }
 
   return (
     <Card padding={0} shadow="xs">

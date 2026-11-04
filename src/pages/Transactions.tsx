@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  Box,
   Button,
   Center,
   Group,
@@ -131,6 +132,7 @@ const Transactions = () => {
               </Text>
             </StatCard>
 
+            <Box visibleFrom="sm">
             <StatCard label="Daily spending" icon={<IconCalendarStats size={20} />} color="blue">
               <BarChart
                 h={90}
@@ -144,6 +146,9 @@ const Transactions = () => {
               />
             </StatCard>
 
+            </Box>
+            {/* phones: keep the list near the top; trends live on Reports */}
+            <Box visibleFrom="sm">
             <StatCard label="Insights" icon={<IconBulb size={20} />} color="yellow">
               {filteredExpenses.length ? (
                 <Stack gap={4}>
@@ -161,12 +166,14 @@ const Transactions = () => {
                 <Text c="dimmed">No insights yet for this month.</Text>
               )}
             </StatCard>
+            </Box>
           </SimpleGrid>
 
-          <Group justify="space-between" align="flex-end">
-            <Group align="flex-end" gap="sm">
+          <Group justify="space-between" align="flex-end" gap="sm">
+            <Group align="flex-end" gap="sm" w={{ base: "100%", md: "auto" }}>
               <SegmentedControl
                 aria-label="Type"
+                w={{ base: "100%", xs: "auto" }}
                 value={typeFilter}
                 onChange={setTypeFilter}
                 data={[
@@ -181,7 +188,7 @@ const Transactions = () => {
                 leftSection={<IconSearch size={16} />}
                 value={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
-                w={220}
+                w={{ base: "100%", xs: 220 }}
               />
               <MultiSelect
                 aria-label="Filter by category"
@@ -190,10 +197,10 @@ const Transactions = () => {
                 value={selectedCategories}
                 onChange={setSelectedCategories}
                 clearable
-                w={260}
+                w={{ base: "100%", xs: 260 }}
               />
             </Group>
-            <Group gap="xs">
+            <Group gap="xs" grow w={{ base: "100%", md: "auto" }}>
               <Button variant="default" leftSection={<IconUpload size={16} />} onClick={importModal.open}>
                 Import CSV
               </Button>
@@ -210,18 +217,19 @@ const Transactions = () => {
 
           {visibleSelected.size > 0 && (
             <Paper withBorder p="sm" shadow="sm">
-              <Group justify="space-between">
+              <Group justify="space-between" gap="xs">
                 <Text size="sm" fw={500}>
                   {visibleSelected.size} selected
                 </Text>
-                <Group gap="xs">
+                <Group gap="xs" w={{ base: "100%", xs: "auto" }} wrap="nowrap">
                   <Select
                     aria-label="Move to category"
                     placeholder="Move to category…"
                     data={categories.map(({ value, label }) => ({ value, label }))}
                     value={null}
                     onChange={(value) => value && runBulk({ action: "categorize", category: value })}
-                    w={200}
+                    style={{ flex: 1 }}
+                    w={{ base: "auto", xs: 200 }}
                   />
                   <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={confirmBulkDelete}>
                     Delete

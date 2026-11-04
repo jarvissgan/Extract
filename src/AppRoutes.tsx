@@ -1,10 +1,13 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router";
-import { AppShell, Badge, Burger, Center, Group, Loader } from "@mantine/core";
+import { AppShell, Badge, Box, Center, Group, Loader } from "@mantine/core";
 import Logo from "./components/Logo";
 import AppearanceToggle from "./components/AppearanceToggle";
-import { useDisclosure } from "@mantine/hooks";
 import Sidebar from "./components/Sidebar";
+import MobileNav from "./components/MobileNav";
+import AccountMenu from "./components/AccountMenu";
+import { useCurrentUser } from "./context/UserContext";
+import { useIsMobile } from "./hooks/useIsMobile";
 import { RequireAccount, RequireAuth } from "./components/RouteGuards";
 import { DEV_AUTH } from "./auth/devAuth";
 
@@ -27,18 +30,21 @@ const PageLoader = () => (
 );
 
 const AppRoutes = () => {
-  const [navOpened, { toggle, close }] = useDisclosure(false);
+  const isMobile = useIsMobile();
+  const { status } = useCurrentUser();
+  // phones: bottom tab bar instead of the sidebar
+  const showTabs = isMobile && status === "ready";
 
   return (
     <AppShell
       header={{ height: 60 }}
-      navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
+      navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: true } }}
+      footer={{ height: 64, collapsed: !showTabs }}
       padding={0}
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
-            <Burger opened={navOpened} onClick={toggle} hiddenFrom="sm" size="sm" />
             <Logo />
             {DEV_AUTH && (
               <Badge color="yellow" variant="light" visibleFrom="xs">
@@ -46,12 +52,22 @@ const AppRoutes = () => {
               </Badge>
             )}
           </Group>
-          <AppearanceToggle />
+          <Group gap="xs" wrap="nowrap">
+            <AppearanceToggle />
+            <Box hiddenFrom="sm">
+              <AccountMenu />
+            </Box>
+          </Group>
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="md">
-        <Sidebar onNavigate={close} />
+        <Sidebar onNavigate={() => {}} />
       </AppShell.Navbar>
+      {showTabs && (
+        <AppShell.Footer className="mobile-tabs">
+          <MobileNav />
+        </AppShell.Footer>
+      )}
       <AppShell.Main>
         <Suspense fallback={<PageLoader />}>
           <Routes>

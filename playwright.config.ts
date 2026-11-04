@@ -15,7 +15,11 @@ export default defineConfig({
     // optional: use an already-installed Chromium instead of Playwright's download
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /mobile\.spec\.ts/ },
+    // phone-sized with touch; see CLAUDE.md for the mobile rules these tests guard
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec\.ts/ },
+  ],
   webServer: {
     command: "npm run local",
     // the API answers 401 without a token, which Playwright counts as "up"

@@ -1,6 +1,7 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import {
   Alert,
+  Box,
   Center,
   Group,
   Loader,
@@ -26,6 +27,7 @@ import QuickAddBar from "../components/QuickAddBar";
 import StatCard from "../components/StatCard";
 import TransactionTable from "../components/TransactionTable";
 import { useCurrentUser } from "../context/UserContext";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useMonthTransactions, useSelectedMonth } from "../hooks/useMonthTransactions";
 import { expensesOf, findCategory, sumAmounts } from "../lib/transactions";
 
@@ -37,6 +39,7 @@ const Home = () => {
   const { month, setMonth } = useSelectedMonth();
   const { transactions, spent, income, loading, error } = useMonthTransactions(month);
   const previous = useMonthTransactions(month.subtract(1, "month"));
+  const isMobile = useIsMobile();
 
   const isCurrentMonth = month.isSame(dayjs(), "month");
   const monthName = month.format("MMMM YYYY");
@@ -97,14 +100,15 @@ const Home = () => {
             </Alert>
           )}
 
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
+          {/* phones: the two money totals side by side, wider cards below */}
+          <SimpleGrid cols={{ base: 2, lg: 4 }} spacing={{ base: "sm", sm: "lg" }}>
             <StatCard label={`Spent in ${monthName}`} icon={<IconReceipt2 size={20} />}>
-              <Title order={2} className="tabular">{formatMoney(spent)}</Title>
+              <Title order={2} fz={{ base: "h3", sm: "h2" }} className="tabular">{formatMoney(spent)}</Title>
               {change !== null ? (
                 <Group gap={4} c={change > 0 ? "red" : "teal"}>
                   {change > 0 ? <IconArrowUpRight size={16} /> : <IconArrowDownRight size={16} />}
                   <Text size="sm" c="inherit">
-                    {Math.abs(Math.round(change))}% vs {isCurrentMonth ? "this point last month" : "last month"}
+                    {Math.abs(Math.round(change))}% vs {isCurrentMonth && !isMobile ? "this point last month" : "last month"}
                   </Text>
                 </Group>
               ) : (
@@ -115,7 +119,7 @@ const Home = () => {
             </StatCard>
 
             <StatCard label="Income and net" icon={<IconWallet size={20} />} color="teal">
-              <Title order={2} c="teal">
+              <Title order={2} fz={{ base: "h3", sm: "h2" }} c="teal" className="tabular">
                 +{formatMoney(income)}
               </Title>
               <Text size="sm" c={income - spent < 0 ? "red" : "dimmed"}>
@@ -124,6 +128,7 @@ const Home = () => {
               </Text>
             </StatCard>
 
+            <Box style={{ gridColumn: isMobile ? "span 2" : undefined }}>
             <StatCard label={isCurrentMonth ? "Budget remaining" : "Budget"} icon={<IconTarget size={20} />} color="orange">
               {monthlyBudget === null || remaining === null ? (
                 <Text c="dimmed">No monthly budget set.</Text>
@@ -142,6 +147,8 @@ const Home = () => {
               )}
             </StatCard>
 
+            </Box>
+            <Box style={{ gridColumn: isMobile ? "span 2" : undefined }}>
             <StatCard label="Spending by category" icon={<IconChartDonut size={20} />} color="grape">
               {byCategory.length ? (
                 <Group wrap="nowrap" gap="md">
@@ -161,6 +168,7 @@ const Home = () => {
                 <Text c="dimmed">Nothing spent yet.</Text>
               )}
             </StatCard>
+            </Box>
           </SimpleGrid>
 
           {categoryProgress.length > 0 && (

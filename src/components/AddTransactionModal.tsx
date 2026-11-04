@@ -20,6 +20,7 @@ import api, { errorStatus } from "../lib/api";
 import type { TransactionType } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
 import { useTransactionEntry, type EntryPrefill } from "../context/TransactionEntry";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { categoryFromRules, fieldErrors, transactionSchema } from "../../shared/schemas.js";
 
 const today = () => dayjs().format("YYYY-MM-DD");
@@ -51,6 +52,7 @@ const AddTransactionModal = ({ opened, onClose, prefill }: Props) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
   // which button submitted the form
   const keepOpenRef = useRef(false);
 
@@ -158,7 +160,14 @@ const AddTransactionModal = ({ opened, onClose, prefill }: Props) => {
   const nameOptions = [...new Set(suggestions.filter((s) => s.type === type).map((s) => s.name))];
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Add transaction" centered>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="Add transaction"
+      centered
+      fullScreen={isMobile}
+      transitionProps={{ transition: isMobile ? "slide-up" : "pop" }}
+    >
       <form onSubmit={onSubmit} noValidate>
         <Stack>
           <SegmentedControl
@@ -191,6 +200,7 @@ const AddTransactionModal = ({ opened, onClose, prefill }: Props) => {
             decimalScale={2}
             allowNegative={false}
             inputMode="decimal"
+            hideControls={isMobile}
             value={amount}
             error={errors.transaction_amount}
             onChange={setAmount}
@@ -213,6 +223,7 @@ const AddTransactionModal = ({ opened, onClose, prefill }: Props) => {
               onChange={(value) => setDate(value || today())}
               maxDate={today()}
               valueFormat="D MMM YYYY"
+              dropdownType={isMobile ? "modal" : "popover"}
             />
           </Group>
           <Textarea
@@ -233,7 +244,7 @@ const AddTransactionModal = ({ opened, onClose, prefill }: Props) => {
             <Text size="xs" c="dimmed" visibleFrom="sm">
               <Kbd size="xs">Enter</Kbd> to add
             </Text>
-            <Group gap="xs">
+            <Group gap="xs" grow={isMobile} style={isMobile ? { flex: 1 } : undefined}>
               <Button
                 type="submit"
                 variant="default"

@@ -42,6 +42,7 @@ import { celebrate } from "../lib/celebrate";
 import { formatDate } from "../lib/transactions";
 import type { SavingsEntry, SavingsGoal } from "../lib/types";
 import StatCard from "../components/StatCard";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { HoneyPot, PoohBear } from "../components/Pooh";
 import { useCurrentUser } from "../context/UserContext";
 import { confettiColors, ctaProps, useAppearance } from "../theme/Appearance";
@@ -73,6 +74,7 @@ const GoalModal = ({
   onSaved: () => void;
 }) => {
   const theme = useMantineTheme();
+  const isMobile = useIsMobile();
   const { currencySymbol } = useCurrentUser();
   const [name, setName] = useState("");
   const [target, setTarget] = useState<number | string>("");
@@ -113,11 +115,18 @@ const GoalModal = ({
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={goal ? "Edit goal" : "New savings goal"} centered>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={goal ? "Edit goal" : "New savings goal"}
+      centered
+      fullScreen={isMobile}
+      transitionProps={{ transition: isMobile ? "slide-up" : "pop" }}
+    >
       <form onSubmit={submit} noValidate>
         <Stack>
           <TextInput label="What are you saving for?" placeholder="e.g. Japan trip" value={name} onChange={(e) => setName(e.currentTarget.value)} error={errors.name} data-autofocus />
-          <Group grow align="flex-start">
+          <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="sm">
             <NumberInput
               label="Target"
               prefix={currencySymbol}
@@ -136,8 +145,9 @@ const GoalModal = ({
               minDate={dayjs().format("YYYY-MM-DD")}
               valueFormat="D MMM YYYY"
               clearable
+              dropdownType={isMobile ? "modal" : "popover"}
             />
-          </Group>
+          </SimpleGrid>
           <div>
             <Text size="sm" fw={500} mb={6}>
               Icon

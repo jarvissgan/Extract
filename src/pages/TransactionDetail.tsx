@@ -21,6 +21,7 @@ import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconCopy, IconRepeat, IconTrash } from "@tabler/icons-react";
 import { useTransactionEntry } from "../context/TransactionEntry";
+import { useIsMobile } from "../hooks/useIsMobile";
 import dayjs from "dayjs";
 import api, { errorStatus } from "../lib/api";
 import { formatDateTime, toTransaction } from "../lib/transactions";
@@ -48,6 +49,7 @@ const TransactionDetail = () => {
     useCurrentUser();
   const navigate = useNavigate();
   const { openAdd } = useTransactionEntry();
+  const isMobile = useIsMobile();
   const listPath = `/transactions/${sqid}`;
 
   const [original, setOriginal] = useState<Transaction | null>(null);
@@ -223,9 +225,9 @@ const TransactionDetail = () => {
 
   return (
     <Stack p={{ base: "md", md: "xl" }} maw={720}>
-      <Group justify="space-between">
-        <Group gap="sm">
-          <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => navigate(listPath)}>
+      <Group justify="space-between" gap="sm">
+        <Group gap="sm" wrap="nowrap">
+          <Button variant="subtle" px="xs" leftSection={<IconArrowLeft size={16} />} onClick={() => navigate(listPath)}>
             Back
           </Button>
           <Title order={3}>Transaction details</Title>
@@ -236,7 +238,7 @@ const TransactionDetail = () => {
           )}
         </Group>
         {!editing && (
-          <Group gap="xs">
+          <Group gap="xs" grow w={{ base: "100%", sm: "auto" }}>
             <Button
               variant="default"
               leftSection={<IconCopy size={16} />}
@@ -312,6 +314,7 @@ const TransactionDetail = () => {
               value={date}
               onChange={setDate}
               valueFormat="D MMM YYYY, h:mm A"
+              dropdownType={isMobile ? "modal" : "popover"}
               maxDate={new Date()}
             />
           </Group>
@@ -330,7 +333,7 @@ const TransactionDetail = () => {
             </Text>
           )}
           {editing && (
-            <Group justify="flex-end">
+            <Group justify="flex-end" grow={isMobile}>
               <Button variant="default" onClick={cancelEdit}>
                 Cancel
               </Button>

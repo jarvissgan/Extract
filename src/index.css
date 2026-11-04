@@ -94,3 +94,30 @@ body {
 [data-appearance="light"] .mantine-AppShell-main {
   background: #f7f7fb;
 }
+
+/* ---------- Phones ---------- */
+@media (max-width: 47.99em) {
+  /* iOS zooms into any field with text smaller than 16px; keep it at 16px */
+  input,
+  select,
+  textarea,
+  .mantine-Input-input,
+  .mantine-Select-input,
+  .mantine-PillsInput-input {
+    font-size: 16px !important;
+  }
+}
+
+/* no grey flash when tapping */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* bottom tab bar clears the iPhone home indicator */
+.mobile-tabs {
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(64px + env(safe-area-inset-bottom)) !important;
+}
+.mantine-AppShell-header {
+  padding-top: env(safe-area-inset-top);
+}

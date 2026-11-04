@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActionIcon, Affix, Button, Group, Text } from "@mantine/core";
+import { Button, Group, Text } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
 import api from "../lib/api";
 import { parseJson, type TransactionDetails, type TransactionType } from "../lib/types";
 import { useCurrentUser } from "./UserContext";
@@ -122,17 +121,7 @@ export const TransactionEntryProvider = ({ children }: { children: ReactNode }) 
   return (
     <TransactionEntryContext.Provider value={value}>
       {children}
-      {ready && (
-        <>
-          <AddTransactionModal opened={opened} onClose={() => setOpened(false)} prefill={prefill} />
-          {/* phones: the sidebar is hidden behind the menu, so keep "add" one tap away */}
-          <Affix position={{ bottom: 20, right: 20 }} hiddenFrom="sm">
-            <ActionIcon size={56} radius="xl" variant="filled" aria-label="Add transaction" onClick={() => openAdd()} style={{ boxShadow: "var(--mantine-shadow-lg)" }}>
-              <IconPlus size={28} />
-            </ActionIcon>
-          </Affix>
-        </>
-      )}
+      {ready && <AddTransactionModal opened={opened} onClose={() => setOpened(false)} prefill={prefill} />}
     </TransactionEntryContext.Provider>
   );
 };
