@@ -1,4 +1,4 @@
-# Local MariaDB for development: `npm run db:up`
+# Local MariaDB for development; started automatically by `npm run local` and `npm test`.
 # Reads DB_* values from .env. The schema is applied on first start.
 services:
   db:

@@ -1,5 +1,4 @@
-// API integration tests. Needs the database running (`npm run db:up`).
-// Run with: npm run test:api
+// API integration tests. Run with `npm test` (starts the database if needed).
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "../app.js";
