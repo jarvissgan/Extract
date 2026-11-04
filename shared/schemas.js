@@ -130,6 +130,37 @@ export const bulkSchema = z.discriminatedUnion("action", [
   }),
 ]);
 
+export const GOAL_COLORS = ["pink", "grape", "violet", "blue", "teal", "lime", "yellow", "orange"];
+
+const positiveAmount = z.preprocess(
+  toNumber,
+  z
+    .number({ error: "Amount must be a number" })
+    .positive("Amount must be more than 0")
+    .max(1_000_000_000, "Amount is too large")
+);
+
+export const savingsGoalSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(255),
+  target_amount: positiveAmount,
+  // optional deadline, YYYY-MM-DD
+  target_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD")
+    .nullable()
+    .optional()
+    .transform((v) => v || null),
+  emoji: z.string().max(16).nullable().optional().transform((v) => v || null),
+  color: z.enum(GOAL_COLORS).default("pink"),
+});
+
+export const savingsEntrySchema = z.object({
+  kind: z.enum(["deposit", "withdraw"]).default("deposit"),
+  amount: positiveAmount,
+  note: z.string().trim().max(255).default(""),
+  entry_date: isoDateTime.optional(),
+});
+
 // Category for a transaction name from the user's rules, or null.
 export const categoryFromRules = (name, rules) => {
   const lower = String(name || "").toLowerCase();

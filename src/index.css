@@ -5,3 +5,74 @@ body,
   margin: 0;
   padding: 0;
 }
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cards that lift slightly on hover */
+.lift {
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-md);
+}
+
+/* Big numbers line up nicely */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brand gradient text */
+.brand-text {
+  background: linear-gradient(120deg, var(--mantine-color-violet-5), var(--mantine-color-pink-5));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- A mode: butter yellow and pink ---------- */
+[data-appearance="a"] body {
+  background:
+    radial-gradient(circle at 0% 0%, #ffe3ec 0, transparent 38%),
+    radial-gradient(circle at 100% 100%, #ffdeeb 0, transparent 32%),
+    #fff8db;
+  background-attachment: fixed;
+}
+
+[data-appearance="a"] .mantine-AppShell-main {
+  background: transparent;
+}
+
+[data-appearance="a"] .mantine-AppShell-header,
+[data-appearance="a"] .mantine-AppShell-navbar {
+  background: rgba(255, 241, 184, 0.85);
+  backdrop-filter: blur(8px);
+  border-color: #f7c6d8;
+}
+
+[data-appearance="a"] .mantine-Card-root,
+[data-appearance="a"] .mantine-Paper-root:not(.mantine-Notification-root) {
+  background: #fffdf5;
+  border-color: #f7c6d8;
+}
+
+[data-appearance="a"] .mantine-Table-thead {
+  background: #fff1b8;
+}
+
+[data-appearance="a"] .brand-text {
+  background: linear-gradient(120deg, #f06595, #e8a400);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ---------- Light mode: soft background so cards stand out ---------- */
+[data-appearance="light"] body,
+[data-appearance="light"] .mantine-AppShell-main {
+  background: #f7f7fb;
+}

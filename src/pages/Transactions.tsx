@@ -18,7 +18,7 @@ import { BarChart } from "@mantine/charts";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconDownload, IconSearch, IconTrash, IconUpload } from "@tabler/icons-react";
+import { IconBulb, IconCalendarStats, IconDownload, IconReceipt2, IconSearch, IconTrash, IconUpload } from "@tabler/icons-react";
 import api from "../lib/api";
 import dayjs from "dayjs";
 import ImportModal from "../components/ImportModal";
@@ -117,7 +117,7 @@ const Transactions = () => {
       ) : (
         <>
           <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">
-            <StatCard label={`${isFiltered ? "Filtered spending" : "Spending"} for ${monthName}`}>
+            <StatCard label={`${isFiltered ? "Filtered spending" : "Spending"} for ${monthName}`} icon={<IconReceipt2 size={20} />}>
               <Title order={2}>{formatMoney(total)}</Title>
               <Text size="sm" c="dimmed">
                 {filteredExpenses.length} expense{filteredExpenses.length === 1 ? "" : "s"}
@@ -129,7 +129,7 @@ const Transactions = () => {
               </Text>
             </StatCard>
 
-            <StatCard label="Daily spending">
+            <StatCard label="Daily spending" icon={<IconCalendarStats size={20} />} color="blue">
               <BarChart
                 h={90}
                 data={daily}
@@ -142,7 +142,7 @@ const Transactions = () => {
               />
             </StatCard>
 
-            <StatCard label="Insights">
+            <StatCard label="Insights" icon={<IconBulb size={20} />} color="yellow">
               {filteredExpenses.length ? (
                 <Stack gap={4}>
                   <Text size="sm">
@@ -207,7 +207,7 @@ const Transactions = () => {
           </Group>
 
           {visibleSelected.size > 0 && (
-            <Paper withBorder p="sm" radius="md">
+            <Paper withBorder p="sm" shadow="sm">
               <Group justify="space-between">
                 <Text size="sm" fw={500}>
                   {visibleSelected.size} selected

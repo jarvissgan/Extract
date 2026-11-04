@@ -165,6 +165,28 @@ try {
 
     await db.query("DELETE FROM `transaction` WHERE user_id = ?", [userId]);
     await db.query("DELETE FROM recurring_transaction WHERE user_id = ?", [userId]);
+    await db.query("DELETE FROM savings_entry WHERE user_id = ?", [userId]);
+    await db.query("DELETE FROM savings_goal WHERE user_id = ?", [userId]);
+
+    // savings goals with a few deposits each: [name, target, emoji, color, monthsAgo deposits...]
+    const goals = [
+      ["Japan trip", 3000, "🗾", "pink", [400, 350, 500, 300]],
+      ["Emergency fund", 6000, "🛟", "teal", [1000, 500, 500, 250]],
+      ["New laptop", 1800, "💻", "grape", [600, 600, 600]],
+    ];
+    for (const [name, target, emoji, color, deposits] of goals) {
+      const goalId = randomUUID();
+      const total = deposits.reduce((a, b) => a + b, 0);
+      const created = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - deposits.length, 3));
+      await db.query(
+        "INSERT INTO savings_goal (goal_uuid, user_id, name, target_amount, target_date, emoji, color, reached_timestamp, created_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [goalId, userId, name, target, null, emoji, color, total >= target ? new Date() : null, created]
+      );
+      await db.query(
+        "INSERT INTO savings_entry (entry_uuid, goal_uuid, user_id, amount, note, created_timestamp) VALUES ?",
+        [deposits.map((amount, i) => [randomUUID(), goalId, userId, amount, i === 0 ? "First deposit" : null, new Date(created.getTime() + i * 30 * 864e5)])]
+      );
+    }
 
     const rows = transactionsFor(userId);
     if (rows.length) {

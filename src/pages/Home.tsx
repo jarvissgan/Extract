@@ -11,7 +11,15 @@ import {
   Title,
 } from "@mantine/core";
 import { DonutChart } from "@mantine/charts";
-import { IconAlertTriangle, IconArrowDownRight, IconArrowUpRight } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconArrowDownRight,
+  IconArrowUpRight,
+  IconChartDonut,
+  IconReceipt2,
+  IconTarget,
+  IconWallet,
+} from "@tabler/icons-react";
 import dayjs from "dayjs";
 import MonthHeader from "../components/MonthHeader";
 import StatCard from "../components/StatCard";
@@ -88,8 +96,8 @@ const Home = () => {
           )}
 
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
-            <StatCard label={`Spent in ${monthName}`}>
-              <Title order={2}>{formatMoney(spent)}</Title>
+            <StatCard label={`Spent in ${monthName}`} icon={<IconReceipt2 size={20} />}>
+              <Title order={2} className="tabular">{formatMoney(spent)}</Title>
               {change !== null ? (
                 <Group gap={4} c={change > 0 ? "red" : "teal"}>
                   {change > 0 ? <IconArrowUpRight size={16} /> : <IconArrowDownRight size={16} />}
@@ -104,7 +112,7 @@ const Home = () => {
               )}
             </StatCard>
 
-            <StatCard label="Income and net">
+            <StatCard label="Income and net" icon={<IconWallet size={20} />} color="teal">
               <Title order={2} c="teal">
                 +{formatMoney(income)}
               </Title>
@@ -114,7 +122,7 @@ const Home = () => {
               </Text>
             </StatCard>
 
-            <StatCard label={isCurrentMonth ? "Budget remaining" : "Budget"}>
+            <StatCard label={isCurrentMonth ? "Budget remaining" : "Budget"} icon={<IconTarget size={20} />} color="orange">
               {monthlyBudget === null || remaining === null ? (
                 <Text c="dimmed">No monthly budget set.</Text>
               ) : (
@@ -132,7 +140,7 @@ const Home = () => {
               )}
             </StatCard>
 
-            <StatCard label="Spending by category">
+            <StatCard label="Spending by category" icon={<IconChartDonut size={20} />} color="grape">
               {byCategory.length ? (
                 <Group wrap="nowrap" gap="md">
                   <DonutChart data={byCategory} size={90} thickness={14} withTooltip valueFormatter={formatMoney} />

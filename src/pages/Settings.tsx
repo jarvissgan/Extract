@@ -17,12 +17,14 @@ import {
   Text,
   TextInput,
   Title,
+  UnstyledButton,
   useMantineTheme,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useAuth0 } from "@auth0/auth0-react";
-import { IconDownload, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconDownload, IconPlus, IconTrash } from "@tabler/icons-react";
+import { APPEARANCES, useAppearance, type Appearance } from "../theme/Appearance";
 import dayjs from "dayjs";
 import api from "../lib/api";
 import { findCategory } from "../lib/transactions";
@@ -41,7 +43,7 @@ import {
 } from "../../shared/schemas.js";
 
 const Section = ({ title, description, children }: { title: string; description: string; children: React.ReactNode }) => (
-  <Paper withBorder radius="md" p="lg">
+  <Paper withBorder shadow="xs" p="lg">
     <Title order={4}>{title}</Title>
     <Text size="sm" c="dimmed" mb="md">
       {description}
@@ -398,6 +400,58 @@ const RecurringSection = () => {
   );
 };
 
+const PREVIEW: Record<Appearance, { bg: string; card: string; accent: string; text: string }> = {
+  light: { bg: "#f7f7fb", card: "#ffffff", accent: "#7950f2", text: "#212529" },
+  dark: { bg: "#1f1f24", card: "#2e2e33", accent: "#9775fa", text: "#e9ecef" },
+  a: { bg: "#fff8db", card: "#fffdf5", accent: "#f06595", text: "#4a3426" },
+};
+
+const AppearanceSection = () => {
+  const { appearance, setAppearance } = useAppearance();
+  return (
+    <Section title="Appearance" description="Saved on this device. You can also switch from the top-right of the screen.">
+      <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="md">
+        {APPEARANCES.map((a) => {
+          const p = PREVIEW[a.value];
+          const active = appearance === a.value;
+          return (
+            <UnstyledButton
+              key={a.value}
+              onClick={() => setAppearance(a.value)}
+              aria-pressed={active}
+              aria-label={`${a.label} appearance`}
+              style={{
+                borderRadius: 12,
+                border: `2px solid ${active ? "var(--mantine-primary-color-filled)" : "var(--mantine-color-default-border)"}`,
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ background: p.bg, padding: 12, height: 86 }}>
+                <div style={{ background: p.card, borderRadius: 8, padding: 8, boxShadow: "0 1px 3px rgba(0,0,0,.08)" }}>
+                  <div style={{ width: "55%", height: 6, borderRadius: 3, background: p.text, opacity: 0.6 }} />
+                  <div style={{ width: "35%", height: 10, borderRadius: 4, background: p.accent, marginTop: 8 }} />
+                  {a.value === "a" && <div style={{ width: "70%", height: 4, borderRadius: 2, background: "#ffe066", marginTop: 6 }} />}
+                </div>
+              </div>
+              <Group justify="space-between" px="sm" py={8}>
+                <div>
+                  <Text size="sm" fw={600}>
+                    {a.label}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {a.description}
+                  </Text>
+                </div>
+                {active && <IconCheck size={18} color="var(--mantine-primary-color-filled)" />}
+              </Group>
+            </UnstyledButton>
+          );
+        })}
+      </SimpleGrid>
+    </Section>
+  );
+};
+
 const BudgetsSection = () => {
   const { categories, categoryBudgets, preferences, currencySymbol } = useCurrentUser();
   const save = useSaveAccount();
@@ -609,9 +663,15 @@ const DataSection = () => {
 };
 
 const Settings = () => (
-  <Stack p={{ base: "md", md: "xl" }} gap="lg" maw={900}>
-    <Title order={2}>Settings</Title>
+  <Stack p={{ base: "md", md: "xl" }} gap="lg" maw={920}>
+    <div>
+      <Title order={2}>Settings</Title>
+      <Text c="dimmed" size="sm">
+        Your account, look and feel, budgets and automation.
+      </Text>
+    </div>
     <AccountSection />
+    <AppearanceSection />
     <BudgetsSection />
     <CategoriesSection />
     <RulesSection />

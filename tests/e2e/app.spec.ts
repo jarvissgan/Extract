@@ -192,3 +192,55 @@ test("rules categorize new transactions and bulk actions update many at once", a
   await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
   await expect(page.locator("tbody tr")).toHaveCount(1);
 });
+
+test("a savings goal fills up and celebrates with confetti when reached", async ({ page }) => {
+  await signUp(page, "saver");
+  await page.getByText("Savings", { exact: true }).click();
+  await expect(page.getByText("Start your first savings goal")).toBeVisible();
+
+  await page.getByRole("button", { name: "New goal" }).click();
+  const goalDialog = page.getByRole("dialog", { name: "New savings goal" });
+  await goalDialog.getByLabel("What are you saving for?").fill("Concert tickets");
+  await goalDialog.getByLabel("Target").fill("200");
+  await goalDialog.getByRole("button", { name: "Icon 🎁" }).click();
+  await goalDialog.getByRole("button", { name: "Create goal" }).click();
+
+  const card = page.getByLabel("Savings goal Concert tickets");
+  await expect(card.getByText("0%")).toBeVisible();
+
+  await card.getByRole("button", { name: "Add money" }).click();
+  let dialog = page.getByRole("dialog", { name: /Concert tickets/ });
+  await dialog.getByLabel("Amount").fill("150");
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(card.getByText("75%")).toBeVisible();
+
+  await card.getByRole("button", { name: "Add money" }).click();
+  dialog = page.getByRole("dialog", { name: /Concert tickets/ });
+  await dialog.getByRole("button", { name: /Fill the rest/ }).click();
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: "Goal reached!" })).toBeVisible();
+  await expect(page.locator("canvas")).toHaveCount(1); // the confetti
+  await page.getByRole("button", { name: "Yay!" }).click();
+  await expect(card.getByText(/Reached/)).toBeVisible();
+
+  // can't take out more than is saved
+  await card.getByRole("button", { name: "Take out" }).click();
+  dialog = page.getByRole("dialog", { name: /Concert tickets/ });
+  await dialog.getByLabel("Amount").fill("500");
+  await dialog.getByRole("button", { name: "Take out", exact: true }).click();
+  await expect(dialog.getByText("You can't take out more than you've saved.")).toBeVisible();
+});
+
+test("A mode switches to butter yellow and pink and is remembered", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('[aria-label="A mode"]').first().click();
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "a");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 248, 219)");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "a");
+
+  await page.locator('[aria-label="Dark"]').first().click();
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
+});

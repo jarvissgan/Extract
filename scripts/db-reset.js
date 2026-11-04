@@ -20,7 +20,7 @@ if (!process.argv.includes("--yes")) {
 const db = await connect();
 try {
   await db.query(
-    "DROP TABLE IF EXISTS `transaction`, recurring_transaction, users, schema_migrations"
+    "DROP TABLE IF EXISTS savings_entry, savings_goal, `transaction`, recurring_transaction, users, schema_migrations"
   );
 } finally {
   await db.end();

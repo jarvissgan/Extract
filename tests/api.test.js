@@ -293,6 +293,53 @@ test("saves category budgets and categorization rules in preferences", async () 
   assert.equal(bad.status, 400);
 });
 
+test("savings goals track deposits, withdrawals and reaching the target", async () => {
+  const created = await api("POST", "/savings", {
+    as: alice,
+    body: { name: "Bike", target_amount: 500, target_date: "2027-06-01", emoji: "🚲", color: "teal" },
+  });
+  assert.equal(created.status, 200);
+  const uuid = created.body.goal_uuid;
+  assert.equal(created.body.target_date, "2027-06-01");
+  assert.equal(Number(created.body.saved), 0);
+
+  const first = await api("POST", `/savings/${uuid}/entries`, { as: alice, body: { amount: 300, note: "Bonus" } });
+  assert.equal(first.body.reached, false);
+  assert.equal(Number(first.body.goal.saved), 300);
+
+  const tooMuch = await api("POST", `/savings/${uuid}/entries`, { as: alice, body: { kind: "withdraw", amount: 400 } });
+  assert.equal(tooMuch.status, 400);
+  const zero = await api("POST", `/savings/${uuid}/entries`, { as: alice, body: { amount: 0 } });
+  assert.equal(zero.status, 400);
+
+  const reach = await api("POST", `/savings/${uuid}/entries`, { as: alice, body: { amount: 250 } });
+  assert.equal(reach.body.reached, true);
+  assert.ok(reach.body.goal.reached_timestamp);
+
+  // only the first time it's reached
+  const again = await api("POST", `/savings/${uuid}/entries`, { as: alice, body: { amount: 10 } });
+  assert.equal(again.body.reached, false);
+
+  const withdraw = await api("POST", `/savings/${uuid}/entries`, { as: alice, body: { kind: "withdraw", amount: 60 } });
+  assert.equal(Number(withdraw.body.goal.saved), 500);
+
+  const entries = await api("GET", `/savings/${uuid}/entries`, { as: alice });
+  assert.equal(entries.body.length, 4);
+
+  // raising the target makes it unfinished again
+  const raised = await api("PUT", `/savings/${uuid}`, { as: alice, body: { name: "Bike", target_amount: 900 } });
+  assert.equal(raised.body.reached_timestamp, null);
+
+  // other users can't see or touch it
+  assert.equal((await api("GET", "/savings", { as: bob })).body.length, 0);
+  assert.equal((await api("GET", `/savings/${uuid}/entries`, { as: bob })).status, 404);
+  assert.equal((await api("POST", `/savings/${uuid}/entries`, { as: bob, body: { amount: 5 } })).status, 404);
+  assert.equal((await api("DELETE", `/savings/${uuid}`, { as: bob })).status, 404);
+
+  assert.equal((await api("DELETE", `/savings/${uuid}`, { as: alice })).status, 200);
+  assert.equal((await api("GET", "/savings", { as: alice })).body.length, 0);
+});
+
 test("users cannot see or change other users' transactions", async () => {
   const tx = state.aliceTx;
   assert.equal((await api("GET", `/transaction/user/${state.aliceSqid}`, { as: bob })).status, 403);

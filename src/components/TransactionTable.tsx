@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Anchor, Badge, Checkbox, Group, Table, Text, Tooltip, UnstyledButton } from "@mantine/core";
-import { IconChevronDown, IconChevronUp, IconRepeat, IconSelector } from "@tabler/icons-react";
+import { Anchor, Badge, Card, Checkbox, Group, Stack, Table, Text, ThemeIcon, Tooltip, UnstyledButton } from "@mantine/core";
+import { IconChevronDown, IconChevronUp, IconReceipt, IconRepeat, IconSelector } from "@tabler/icons-react";
 import { Link, useNavigate } from "react-router";
 import { findCategory, formatDateTime } from "../lib/transactions";
 import type { Transaction } from "../lib/types";
@@ -73,9 +73,16 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
 
   if (!transactions.length) {
     return (
-      <Text c="dimmed" ta="center" py="xl">
-        {emptyText}
-      </Text>
+      <Card padding="xl">
+        <Stack align="center" gap="xs" py="lg">
+          <ThemeIcon size={52} radius="xl" variant="light">
+            <IconReceipt size={28} />
+          </ThemeIcon>
+          <Text c="dimmed" ta="center">
+            {emptyText}
+          </Text>
+        </Stack>
+      </Card>
     );
   }
 
@@ -90,8 +97,9 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
   };
 
   return (
+    <Card padding={0} shadow="xs">
     <Table.ScrollContainer minWidth={560}>
-      <Table striped highlightOnHover withTableBorder verticalSpacing="sm">
+      <Table highlightOnHover verticalSpacing="sm" horizontalSpacing="md">
         <Table.Thead>
           <Table.Tr>
             {selectable && (
@@ -159,6 +167,7 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
         </Table.Tbody>
       </Table>
     </Table.ScrollContainer>
+    </Card>
   );
 };
 

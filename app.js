@@ -5,6 +5,7 @@ import { rateLimit } from "express-rate-limit";
 import userRouter from "./api/userRoutes.js";
 import transactionRouter from "./api/transactionRoutes.js";
 import recurringRouter from "./api/recurringRoutes.js";
+import savingsRouter from "./api/savingsRoutes.js";
 import { createAuthMiddleware } from "./api/auth.js";
 import { resolveCurrentUser } from "./api/currentUser.js";
 
@@ -40,6 +41,7 @@ export function createApp() {
   app.use("/api", userRouter);
   app.use("/api", transactionRouter);
   app.use("/api", recurringRouter);
+  app.use("/api", savingsRouter);
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {

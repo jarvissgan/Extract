@@ -1,6 +1,8 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router";
-import { AppShell, Badge, Burger, Center, Group, Loader, Text } from "@mantine/core";
+import { AppShell, Badge, Burger, Center, Group, Loader } from "@mantine/core";
+import Logo from "./components/Logo";
+import AppearanceToggle from "./components/AppearanceToggle";
 import { useDisclosure } from "@mantine/hooks";
 import Sidebar from "./components/Sidebar";
 import { RequireAccount, RequireAuth } from "./components/RouteGuards";
@@ -13,6 +15,7 @@ const TransactionDetail = lazy(() => import("./pages/TransactionDetail"));
 const UserSetup = lazy(() => import("./pages/UserSetup"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Reports = lazy(() => import("./pages/Reports"));
+const Savings = lazy(() => import("./pages/Savings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 // only bundled on the dev server with VITE_AUTH_MODE=dev
 const DevLogin = DEV_AUTH ? lazy(() => import("./pages/DevLogin")) : null;
@@ -28,19 +31,22 @@ const AppRoutes = () => {
 
   return (
     <AppShell
-      header={{ height: 56 }}
-      navbar={{ width: 220, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
+      header={{ height: 60 }}
+      navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
       padding={0}
     >
       <AppShell.Header>
-        <Group h="100%" px="md" gap="sm">
-          <Burger opened={navOpened} onClick={toggle} hiddenFrom="sm" size="sm" />
-          <Text fw={700}>Extract</Text>
-          {DEV_AUTH && (
-            <Badge color="yellow" variant="light">
-              Dev auth
-            </Badge>
-          )}
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap">
+            <Burger opened={navOpened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <Logo />
+            {DEV_AUTH && (
+              <Badge color="yellow" variant="light" visibleFrom="xs">
+                Dev auth
+              </Badge>
+            )}
+          </Group>
+          <AppearanceToggle />
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="md">
@@ -58,6 +64,7 @@ const AppRoutes = () => {
                 <Route path="/transactions/:sqid" element={<Transactions />} />
                 <Route path="/transactions/:sqid/:transaction_uuid" element={<TransactionDetail />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/savings" element={<Savings />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>

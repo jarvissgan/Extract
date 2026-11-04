@@ -8,6 +8,8 @@ Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and
 - Reports: 3/6/12-month income vs spending, spending by category over time, savings rate
 - Categorization rules ("name contains grab → Transport"), offered automatically when you correct a category
 - Custom categories, monthly recurring bills and salary, per-user currency
+- Savings goals with targets, deadlines, progress rings, history, and confetti when you reach one
+- Light, Dark and "A mode" (butter yellow and pink) appearances, switchable from the header or Settings
 - Download all your data as JSON, or delete your account
 
 ## Stack

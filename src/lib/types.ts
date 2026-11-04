@@ -82,3 +82,23 @@ export const parseJson = <T,>(value: JsonColumn<T> | undefined, fallback: T): T 
     return fallback;
   }
 };
+
+export interface SavingsGoal {
+  goal_uuid: string;
+  name: string;
+  target_amount: number;
+  target_date: string | null;
+  emoji: string | null;
+  color: string;
+  reached_timestamp: string | null;
+  created_timestamp: string;
+  saved: number;
+  entry_count: number;
+}
+
+export interface SavingsEntry {
+  entry_uuid: string;
+  amount: number;
+  note: string | null;
+  created_timestamp: string;
+}

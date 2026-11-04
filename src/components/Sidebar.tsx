@@ -1,13 +1,12 @@
-import { Button, NavLink, Stack, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
+import { Avatar, Button, Group, NavLink, Stack, Text } from "@mantine/core";
 import {
   IconChartBar,
   IconHome,
   IconListDetails,
   IconLogin,
   IconLogout,
-  IconMoon,
+  IconPigMoney,
   IconSettings,
-  IconSun,
 } from "@tabler/icons-react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth0 } from "@auth0/auth0-react";
@@ -15,12 +14,10 @@ import { useCurrentUser } from "../context/UserContext";
 import AddTransactionModal from "./AddTransactionModal";
 
 const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
-  const { setColorScheme } = useMantineColorScheme();
-  const colorScheme = useComputedColorScheme("dark");
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { isAuthenticated, loginWithRedirect, logout } = useAuth0();
-  const { status, sqid } = useCurrentUser();
+  const { isAuthenticated, loginWithRedirect, logout, user: authUser } = useAuth0();
+  const { status, sqid, user } = useCurrentUser();
 
   const go = (route: string) => {
     navigate(route);
@@ -32,34 +29,47 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
         { label: "Home", icon: IconHome, to: `/home/${sqid}` },
         { label: "Transactions", icon: IconListDetails, to: `/transactions/${sqid}` },
         { label: "Reports", icon: IconChartBar, to: "/reports" },
+        { label: "Savings", icon: IconPigMoney, to: "/savings" },
         { label: "Settings", icon: IconSettings, to: "/settings" },
       ]
     : [];
 
   return (
     <Stack justify="space-between" h="100%">
-      <Stack gap="xs">
+      <Stack gap={4}>
+        {status === "ready" && <AddTransactionModal />}
+        {status === "ready" && (
+          <Text size="xs" fw={700} c="dimmed" tt="uppercase" mt="lg" mb={4} px="sm">
+            Menu
+          </Text>
+        )}
         {status === "ready" &&
           links.map(({ label, icon: Icon, to }) => (
             <NavLink
               key={label}
               label={label}
-              leftSection={<Icon size={18} stroke={1.5} />}
+              fw={500}
+              leftSection={<Icon size={19} stroke={1.6} />}
               active={pathname.startsWith(to)}
               onClick={() => go(to)}
             />
           ))}
-        {status === "ready" && <AddTransactionModal />}
       </Stack>
 
-      <Stack gap="xs">
-        <Button
-          variant="subtle"
-          leftSection={colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
-          onClick={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
-        >
-          {colorScheme === "dark" ? "Light mode" : "Dark mode"}
-        </Button>
+      <Stack gap="sm">
+        {isAuthenticated && (user || authUser) && (
+          <Group gap="sm" wrap="nowrap" px={4}>
+            <Avatar color="initials" name={user?.username || authUser?.name} radius="xl" size="md" />
+            <div style={{ minWidth: 0 }}>
+              <Text size="sm" fw={600} truncate>
+                {user?.username || authUser?.name}
+              </Text>
+              <Text size="xs" c="dimmed" truncate>
+                {user?.email || authUser?.email}
+              </Text>
+            </div>
+          </Group>
+        )}
         {isAuthenticated ? (
           <Button
             variant="default"

@@ -1,22 +1,22 @@
 import { BrowserRouter } from "react-router";
-import { MantineProvider } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
 import AuthProvider from "./auth/AuthProvider";
 import { UserProvider } from "./context/UserContext";
 import AppRoutes from "./AppRoutes";
+import { AppearanceProvider } from "./theme/Appearance";
 
 const App = () => (
   <BrowserRouter>
     <AuthProvider>
-      <MantineProvider defaultColorScheme="dark">
+      <AppearanceProvider>
         <ModalsProvider>
           <Notifications />
           <UserProvider>
             <AppRoutes />
           </UserProvider>
         </ModalsProvider>
-      </MantineProvider>
+      </AppearanceProvider>
     </AuthProvider>
   </BrowserRouter>
 );

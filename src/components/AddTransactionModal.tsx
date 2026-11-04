@@ -19,6 +19,7 @@ import dayjs from "dayjs";
 import api, { errorStatus } from "../lib/api";
 import { useCurrentUser } from "../context/UserContext";
 import { categoryFromRules, fieldErrors, transactionSchema } from "../../shared/schemas.js";
+import { brandGradient, useAppearance } from "../theme/Appearance";
 import type { TransactionType } from "../lib/types";
 
 const today = () => dayjs().format("YYYY-MM-DD");
@@ -35,6 +36,7 @@ const AddTransactionModal = () => {
   // once the user picks a category themselves, rules stop changing it
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [opened, { open, close }] = useDisclosure(false);
+  const { appearance } = useAppearance();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState<number | string>("");
   const [category, setCategory] = useState("other");
@@ -126,7 +128,7 @@ const AddTransactionModal = () => {
 
   return (
     <>
-      <Button leftSection={<IconPlus size={18} />} onClick={open} mt="sm">
+      <Button leftSection={<IconPlus size={18} />} onClick={open} size="md" fullWidth variant="gradient" gradient={brandGradient(appearance)}>
         Add transaction
       </Button>
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   Badge,
+  Card,
   Center,
   Group,
   Loader,
@@ -13,6 +14,7 @@ import {
 } from "@mantine/core";
 import { BarChart } from "@mantine/charts";
 import dayjs from "dayjs";
+import { IconPigMoney, IconReceipt2, IconWallet } from "@tabler/icons-react";
 import StatCard from "../components/StatCard";
 import { useCurrentUser } from "../context/UserContext";
 import { useRangeTransactions } from "../hooks/useMonthTransactions";
@@ -74,7 +76,12 @@ const Reports = () => {
   return (
     <Stack p={{ base: "md", md: "xl" }} gap="lg">
       <Group justify="space-between" align="flex-end">
-        <Title order={2}>Reports</Title>
+        <div>
+          <Title order={2}>Reports</Title>
+          <Text c="dimmed" size="sm">
+            How your money moved over the last few months.
+          </Text>
+        </div>
         <SegmentedControl
           aria-label="Period"
           value={months}
@@ -96,13 +103,13 @@ const Reports = () => {
       ) : (
         <>
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
-            <StatCard label={`Spent in ${count} months`}>
+            <StatCard label={`Spent in ${count} months`} icon={<IconReceipt2 size={20} />}>
               <Title order={2}>{formatMoney(spent)}</Title>
               <Text size="sm" c="dimmed">
                 {formatMoney(spent / count)} per month on average
               </Text>
             </StatCard>
-            <StatCard label="Income">
+            <StatCard label="Income" icon={<IconWallet size={20} />} color="teal">
               <Title order={2} c="teal">
                 +{formatMoney(income)}
               </Title>
@@ -110,7 +117,7 @@ const Reports = () => {
                 {formatMoney(income / count)} per month on average
               </Text>
             </StatCard>
-            <StatCard label="Net saved">
+            <StatCard label="Net saved" icon={<IconPigMoney size={20} />} color="pink">
               <Title order={2} c={net < 0 ? "red" : undefined}>
                 {formatMoney(net)}
               </Title>
@@ -149,8 +156,9 @@ const Reports = () => {
           )}
 
           {data.categoryRows.length > 0 && (
+            <Card padding={0} shadow="xs">
             <Table.ScrollContainer minWidth={520}>
-              <Table withTableBorder striped verticalSpacing="sm">
+              <Table highlightOnHover verticalSpacing="sm" horizontalSpacing="md">
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Category</Table.Th>
@@ -182,6 +190,7 @@ const Reports = () => {
                 </Table.Tbody>
               </Table>
             </Table.ScrollContainer>
+            </Card>
           )}
           <Text size="xs" c="dimmed">
             The current month is included up to today, and compared with the same days of last month.
