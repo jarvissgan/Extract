@@ -8,6 +8,7 @@ import { useCurrentUser } from "../context/UserContext";
 import { useAppearance } from "../theme/Appearance";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { HoneyPot } from "./Pooh";
+import { useFromHere } from "../hooks/useMonthTransactions";
 
 type SortKey = "name" | "category" | "amount" | "date";
 
@@ -52,6 +53,7 @@ const SortHeader = ({
 const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange }: Props) => {
   const selectable = !!selected && !!onSelectedChange;
   const navigate = useNavigate();
+  const fromHere = useFromHere();
   const { sqid, categories, formatMoney } = useCurrentUser();
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "date", desc: true });
   const { appearance } = useAppearance();
@@ -160,6 +162,7 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
                 <UnstyledButton
                   component={Link}
                   to={to}
+                  state={fromHere}
                   data-testid="transaction-item"
                   px="md"
                   py={10}
@@ -224,7 +227,7 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
               <Table.Tr
                 key={t.uuid}
                 style={{ cursor: "pointer" }}
-                onClick={() => navigate(to)}
+                onClick={() => navigate(to, { state: fromHere })}
                 bg={selectable && selected!.has(t.uuid) ? "var(--mantine-primary-color-light)" : undefined}
               >
                 {selectable && (
@@ -234,7 +237,7 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
                 )}
                 <Table.Td>
                   <Group gap={6} wrap="nowrap">
-                    <Anchor component={Link} to={to} c="inherit" fz="sm" onClick={(e) => e.stopPropagation()}>
+                    <Anchor component={Link} to={to} state={fromHere} c="inherit" fz="sm" onClick={(e) => e.stopPropagation()}>
                       {t.name}
                     </Anchor>
                     {t.recurring && (

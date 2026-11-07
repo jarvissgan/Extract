@@ -422,3 +422,18 @@ test("an expired login offers to log in again instead of a dead end", async ({ p
   await page.getByRole("button", { name: "Log in again" }).click();
   await expect(page).toHaveURL(/\/dev-login\?returnTo=/);
 });
+
+test("going back from a transaction returns to the month it was opened from", async ({ page }) => {
+  await devLogin(page, "alice@extract.local");
+  await expect(page).toHaveURL(/\/home\/\w+/);
+  const month = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 15).toISOString().slice(0, 7);
+  await page.goto(page.url().split("?")[0].replace("/home/", "/transactions/") + `?month=${month}`);
+  await page.locator('[data-testid="transaction-item"], tbody tr').first().click();
+  await expect(page.getByRole("heading", { name: "Transaction details" })).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL(new RegExp(`/transactions/\\w+\\?month=${month}`));
+
+  // the menu keeps the month too
+  await page.getByRole("link", { name: "Home" }).or(page.getByText("Home", { exact: true })).first().click();
+  await expect(page).toHaveURL(new RegExp(`/home/\\w+\\?month=${month}`));
+});
