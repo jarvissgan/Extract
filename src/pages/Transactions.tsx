@@ -45,6 +45,11 @@ const Transactions = () => {
   const [importOpened, importModal] = useDisclosure(false);
   const [statementOpened, statementModal] = useDisclosure(false);
   const monthName = month.format("MMMM YYYY");
+  // after an import, show the newest imported month if none of it is in the month on screen
+  const showImported = (dates: string[]) => {
+    if (!dates.length || dates.some((d) => dayjs(d).isSame(month, "month"))) return;
+    setMonth(dates.reduce((a, b) => (a > b ? a : b)));
+  };
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -275,8 +280,8 @@ const Transactions = () => {
         </>
       )}
 
-      <ImportModal opened={importOpened} onClose={importModal.close} />
-      <StatementImportModal opened={statementOpened} onClose={statementModal.close} />
+      <ImportModal opened={importOpened} onClose={importModal.close} onImported={showImported} />
+      <StatementImportModal opened={statementOpened} onClose={statementModal.close} onImported={showImported} />
     </Stack>
   );
 };

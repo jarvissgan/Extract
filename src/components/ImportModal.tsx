@@ -10,9 +10,11 @@ import { describeError, importSchema, MAX_IMPORT_ROWS } from "../../shared/schem
 interface Props {
   opened: boolean;
   onClose: () => void;
+  // called with the dates (ISO) of the imported transactions
+  onImported?: (dates: string[]) => void;
 }
 
-const ImportModal = ({ opened, onClose }: Props) => {
+const ImportModal = ({ opened, onClose, onImported }: Props) => {
   const { categories, rules, notifyTransactionsChanged } = useCurrentUser();
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ImportRow[]>([]);
@@ -48,6 +50,7 @@ const ImportModal = ({ opened, onClose }: Props) => {
       const res = await api.post<{ imported: number }>("/transaction/import", { transactions: rows });
       notifications.show({ message: `Imported ${res.data.imported} transactions.`, color: "green" });
       notifyTransactionsChanged();
+      onImported?.(rows.map((r) => r.transaction_date));
       close();
     } catch (error) {
       notifications.show({
