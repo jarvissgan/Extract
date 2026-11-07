@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { itemsToLines } from "../shared/pdfLines.js";
-import { parseStatement } from "../shared/statementParser.js";
+import { parseDbsHistoryCsv, parseStatement } from "../shared/statementParser.js";
 
 const readPdf = async (name) => {
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -85,4 +85,39 @@ test("other PDFs are rejected with a clear message", () => {
   assert.equal(result.kind, null);
   assert.equal(result.rows.length, 0);
   assert.match(result.warnings[0], /doesn't look like a DBS\/POSB/);
+});
+
+test("digibank transaction history CSV", () => {
+  const csv = `"Account Details For:","DBS Multiplier Account 123-456789-0",,,,,,,,,,
+"Statement as at:","07 Nov 2026",,,,,,,,,,
+"",,,,,,,,,,,
+"Available Balance:","SGD 1234.56",,,,,,,,,,
+"Transaction Date","Value Date","Statement Code","Description","Supplementary Code","Supplementary Code Description","Client Reference","Additional Reference","Status","Currency","Debit Amount","Credit Amount"
+"06 Nov 2026","","POS","UMC TOAST BOX       SI SGP 05NOV 4119-1100-2233-4455 123456789012345","UMC TOAST BOX       SI SGP 05NOV","Point-of-Sale Transaction","4119-1100-2233-4455","123456789012345","Settled","SGD",6.8,""
+"06 Nov 2026","","POS","MST APPLE.COM/BILL 8665712775 IRL 04NOV 4119-1100-2233-4455","MST APPLE.COM/BILL 8665712775 IRL 04NOV","Point-of-Sale Transaction","4119-1100-2233-4455","1","Settled","SGD",4.98,""
+"05 Nov 2026","","TOP","TOP TOP-UP TO PAYLAH! : 91234567 TF1234","TOP TOP-UP TO PAYLAH! :","Advice","91234567","TF1234","Settled","SGD",20,""
+"05 Nov 2026","","ICT","ICT PayNow Transfer 1234567 To: MARY LIM OTHR PayNow Transfer","ICT PayNow Transfer 1234567","Advice","To: MARY LIM","OTHR PayNow Transfer","Settled","SGD",45,""
+"04 Nov 2026","","ICT","ICT Incoming PayNow Ref 7654321 From: JOHN TAN (JOHN TAN) OTHR PayNow Transfer","ICT Incoming PayNow Ref 7654321","Advice","From: JOHN TAN (JOHN TAN)","OTHR PayNow Transfer","Settled","SGD","",50
+"03 Nov 2026","","BIL","BILL DBSC-4119110022334455 : I-BANK REF: 12345678901234567890","BILL DBSC-4119110022334455 : I-BANK","Advice","REF: 12345678901234567890","","Settled","SGD","1,023.40",""
+"02 Nov 2026","","GR","PAY ACME PTE LTD SAL 12345678","PAY ACME PTE LTD SAL","Payments to Beneficiary via GIRO","12345678","","Settled","SGD","",4850
+"01 Nov 2026","","INT","Interest Earned","Interest Earned","Interest Earned","","","Settled","SGD","",0.41
+"01 Nov 2026","","ATM","ATM 12345678,TAMPINES","ATM 12345678,TAMPINES","ATM","","","Pending","SGD",100,""
+`;
+  const table = csv.trim().split("\n").map((l) => [...l.matchAll(/("([^"]*)"|[^,]*)(,|$)/g)].slice(0, 12).map((m) => m[2] ?? m[1]));
+  const result = parseDbsHistoryCsv(table);
+  assert.equal(result.kind, "history");
+  assert.equal(result.label, "DBS/POSB transaction history, Nov 2026");
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(pick(result.rows), [
+    { date: "2026-11-06", name: "TOAST BOX", amount: 6.8, type: "expense", kind: "spend", include: true, category: "food" },
+    { date: "2026-11-06", name: "APPLE.COM/BILL", amount: 4.98, type: "expense", kind: "spend", include: true, category: "bills" },
+    { date: "2026-11-05", name: "PayLah! top-up", amount: 20, type: "expense", kind: "transfer", include: true, category: "transfers" },
+    { date: "2026-11-05", name: "PayNow to MARY LIM", amount: 45, type: "expense", kind: "spend", include: true, category: "transfers" },
+    { date: "2026-11-04", name: "PayNow from JOHN TAN (JOHN TAN)", amount: 50, type: "income", kind: "income", include: true, category: "income" },
+    { date: "2026-11-03", name: "Credit card bill payment", amount: 1023.4, type: "expense", kind: "transfer", include: true, category: "transfers" },
+    { date: "2026-11-02", name: "Salary", amount: 4850, type: "income", kind: "income", include: true, category: "income" },
+    { date: "2026-11-01", name: "Interest earned", amount: 0.41, type: "income", kind: "income", include: true, category: "income" },
+  ]); // the pending ATM withdrawal is left out until it settles
+  assert.equal(result.rows[0].source, "DBS Multiplier Account ••7890");
+  assert.equal(parseDbsHistoryCsv([["date", "name", "amount"]]), null);
 });
