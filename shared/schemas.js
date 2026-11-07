@@ -49,6 +49,9 @@ const categoryKey = z.string().trim().min(1, "Category is required").max(40);
 export const transactionDetailsSchema = z.object({
   category: categoryKey.default("other"),
   transaction_note: z.string().max(2000, "Note is too long").default(""),
+  // true when only the day is known (statements, recurring, CSV dates without a time),
+  // so the app shows the date without a made-up time
+  date_only: z.boolean().optional(),
 });
 
 export const transactionSchema = z.object({

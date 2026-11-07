@@ -92,7 +92,9 @@ const SidePanel = ({ transaction }: { transaction: Transaction }) => {
           )}
         </Group>
         <Text size="sm" c="dimmed" mt="sm">
-          {dayjs(transaction.createdAt).format("dddd, D MMMM YYYY · h:mm A")}
+          {dayjs(transaction.createdAt).format(
+            transaction.dateOnly ? "dddd, D MMMM YYYY" : "dddd, D MMMM YYYY · h:mm A",
+          )}
         </Text>
         {transaction.updatedAt && (
           <Text size="xs" c="dimmed" mt={4}>
@@ -203,11 +205,14 @@ const TransactionDetail = () => {
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    // still "date only" unless the time was changed
+    const dateOnly =
+      !!original?.dateOnly && (!date || dayjs(date).format("HH:mm") === dayjs(original.createdAt).format("HH:mm"));
     const parsed = transactionSchema.safeParse({
       transaction_type: type,
       transaction_name: name,
       transaction_amount: amount,
-      transaction_details: { category, transaction_note: note },
+      transaction_details: { category, transaction_note: note, ...(dateOnly ? { date_only: true } : {}) },
       transaction_date: date ? dayjs(date).toISOString() : undefined,
     });
     if (!parsed.success) {
@@ -228,6 +233,7 @@ const TransactionDetail = () => {
         note,
         createdAt: parsed.data.transaction_date ?? original!.createdAt,
         updatedAt: new Date().toISOString(),
+        dateOnly,
       };
       setOriginal(updated);
       setEditing(false);
@@ -328,7 +334,13 @@ const TransactionDetail = () => {
     <Stack p={{ base: "md", md: "xl" }} maw={1240}>
       <Group justify="space-between" gap="sm">
         <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-          <Button variant="subtle" px="xs" style={{ flexShrink: 0 }} leftSection={<IconArrowLeft size={16} />} onClick={() => navigate(listPath)}>
+          <Button
+            variant="subtle"
+            px="xs"
+            style={{ flexShrink: 0 }}
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={() => navigate(listPath)}
+          >
             Back
           </Button>
           <Title order={3} style={{ minWidth: 0 }}>

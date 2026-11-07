@@ -38,7 +38,7 @@ export async function generateDueRecurring(query, userId, now = new Date()) {
         userId,
         rule.name,
         rule.amount,
-        JSON.stringify({ category: rule.category, transaction_note: rule.note || "" }),
+        JSON.stringify({ category: rule.category, transaction_note: rule.note || "", date_only: true }),
         when,
         rule.recurring_uuid,
         period,

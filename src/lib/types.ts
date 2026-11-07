@@ -10,6 +10,7 @@ export interface CategoryOption {
 export interface TransactionDetails {
   category?: string;
   transaction_note?: string;
+  date_only?: boolean;
 }
 
 export type TransactionType = "expense" | "income";
@@ -36,6 +37,8 @@ export interface Transaction {
   createdAt: string;
   updatedAt: string | null;
   recurring: boolean;
+  // only the day is known; don't show a time
+  dateOnly: boolean;
 }
 
 export interface CategoryRule {
