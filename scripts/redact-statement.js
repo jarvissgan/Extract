@@ -127,7 +127,10 @@ async function main() {
     throw err;
   }
 
+  const { OPS } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const IMAGE_OPS = new Set([OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject]);
   const out = [];
+  const stats = [];
   let textLines = 0;
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
@@ -135,14 +138,46 @@ async function main() {
     const lines = itemsToLines(items).map((l) => l.text);
     textLines += lines.length;
     out.push(`===== page ${n} =====`, ...lines.map(redactLine), "");
+
+    // what the page is made of, to explain PDFs with little readable text
+    const { fnArray } = await page.getOperatorList();
+    stats.push({
+      lines: lines.length,
+      unreadable: items.filter((i) => i.str === "" && i.width > 0).length,
+      images: fnArray.filter((op) => IMAGE_OPS.has(op)).length,
+      shapes: fnArray.filter((op) => op === OPS.constructPath).length,
+      glyphs: fnArray.filter((op) => op === OPS.showText || op === OPS.showSpacedText).length,
+    });
   }
 
-  if (textLines === 0) {
-    console.error("No text found: this PDF is probably a scanned image, which can't be read this way.");
-    process.exit(1);
+  const sum = (k) => stats.reduce((t, p) => t + p[k], 0);
+  const report = [
+    "===== what the pages contain (counts only, nothing personal) =====",
+    ...stats.map(
+      (p, i) =>
+        `page ${i + 1}: ${p.lines} text lines, ${p.glyphs} text drawing commands, ${p.unreadable} unreadable text pieces, ${p.images} images, ${p.shapes} drawn shapes`
+    ),
+    "",
+  ];
+  const fewLines = textLines <= doc.numPages * 3;
+  let verdict = null;
+  if (fewLines && sum("images") >= doc.numPages) {
+    verdict =
+      "The transactions are pictures (images) inside the PDF, not text, so they can't be read. This happens when a page is screenshotted or printed as images. Download the transaction history as CSV instead, or use the monthly e-statement PDF.";
+  } else if (fewLines && sum("unreadable") > 0) {
+    verdict =
+      "The text uses fonts with no readable characters (the PDF only knows the shapes of the letters), so it can't be read. Download the transaction history as CSV instead, or use the monthly e-statement PDF.";
+  } else if (fewLines && sum("shapes") > doc.numPages * 50) {
+    verdict =
+      "The text is drawn as outlines (shapes), not letters, so it can't be read. Download the transaction history as CSV instead, or use the monthly e-statement PDF.";
+  } else if (textLines === 0) {
+    verdict = "No text found: this PDF is probably a scanned image, which can't be read this way.";
   }
+  if (verdict) report.push(`Verdict: ${verdict}`, "");
+  out.unshift(...report);
 
   await writeFile(target, out.join("\n"), "utf8");
+  if (verdict) console.log(`\n${verdict}\n`);
   console.log(`Redacted ${doc.numPages} page(s), ${textLines} lines.`);
   console.log(`Saved: ${target}`);
   console.log("Open it and check nothing personal is readable before sharing it.");
