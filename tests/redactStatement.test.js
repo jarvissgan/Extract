@@ -21,3 +21,14 @@ test("masks other scripts and lookalike currency labels", () => {
   assert.equal(redactLine("Zoë 陈"), "XXX X");
   assert.equal(redactLine("J$ 5"), "X$ 9");
 });
+
+test("transaction history CSV lines keep their columns and headings", () => {
+  assert.equal(
+    redactLine("Transaction Date,Reference,Debit Amount,Credit Amount,Transaction Ref1,Transaction Ref2"),
+    "Transaction Date,Reference,Debit Amount,Credit Amount,Transaction Ref1,Transaction Ref2"
+  );
+  assert.equal(
+    redactLine('05 Oct 2026,POS,12.30,,"NETS QR TOAST BOX",JARVIS TAN'),
+    '99 Oct 9999,POS,99.99,,"NETS QR XXXXX XXX",XXXXXX XXX'
+  );
+});

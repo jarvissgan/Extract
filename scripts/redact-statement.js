@@ -1,11 +1,14 @@
-// Makes a privacy-safe text copy of a bank or card statement PDF, so its LAYOUT can be
-// shared (e.g. to build an importer) without sharing personal details.
+// Makes a privacy-safe text copy of a bank or card statement, or a transaction history
+// export, so its LAYOUT can be shared (e.g. to build an importer) without personal details.
+// Reads PDFs (monthly statements, or transaction history saved as PDF) and text exports
+// (.csv, .tsv, .txt, e.g. digibank's transaction history download).
 //
 //   npm run statement:redact -- "C:\path\to\statement.pdf"
 //   npm run statement:redact -- statement.pdf --password      (asks for the PDF password)
+//   npm run statement:redact -- "C:\path\to\history.csv"
 //
 // Runs entirely on your computer; nothing is uploaded. Writes <name>.redacted.txt next to
-// the PDF. Read it before sharing it.
+// the file. Read it before sharing it.
 //
 // What's masked: every digit becomes 9 (amounts, dates, card/account numbers, balances), and
 // every word becomes X's of the same length unless it's common statement vocabulary
@@ -42,13 +45,16 @@ const KEEP = new Set(
   SINGAPORE SG SGP SIN TO FROM FOR AND THE IN ON AT BY WITH YOUR YOU THIS PERIOD
   CCY IPP POINT SALE RECEIPT RECEIPTS EARNED INTERNET WIRELESS MOBILE BANKING TOP UP
   PTE LTD SERVICE SERVICES CHARGED BILLED UNBILLED OUTSTANDING OVERDUE REPAYMENT
+  HISTORY LEDGER AS OF STATUS PENDING SETTLED POSTED AUTHORISED AUTHORIZED TYPE CODE CLIENT
+  TIME MERCHANT CATEGORY ENTRY TOPUP QR SGQR NETSQR APPLE GOOGLE SAMSUNG PAY WALLET DIGIBANK
+  IBANKING BAL REF1 REF2 REF3 MST UMC ICT ITR SAL INT AWL BILL OTHR SALA DIRECT DEBITS
+  WITHDRAWN DEPOSITED RECEIVED SENT INFORMATION PURPOSE YES NO NIL NA FROM TO
   `
     .split(/\s+/)
-    .filter(Boolean)
+    .filter(Boolean),
 );
 
-const maskWord = (word) =>
-  KEEP.has(word.toUpperCase()) ? word : word.replace(/[A-Z]/g, "X").replace(/[a-z]/g, "x");
+const maskWord = (word) => (KEEP.has(word.toUpperCase()) ? word : word.replace(/[A-Z]/g, "X").replace(/[a-z]/g, "x"));
 
 // Letters in other scripts (accents, CJK...) are masked too.
 // Currency labels like S$, US$ and A$ stay readable.
@@ -62,13 +68,37 @@ export const redactLine = (line) =>
       const masked = /^[A-Za-z]+$/.test(word) ? maskWord(word) : "X".repeat(word.length);
       return dollar ? `${masked}$` : masked;
     })
-    .replace(/\d/g, "9");
+    // column names like "Transaction Ref1" keep their single digit
+    .replace(/\d/g, (d, at, line) =>
+      /ref$/i.test(line.slice(Math.max(0, at - 3), at)) && !/\d/.test(line[at + 1] ?? "") ? d : "9",
+    );
 
 async function main() {
   const args = process.argv.slice(2);
   const file = args.find((a) => !a.startsWith("--"));
   if (!file) {
-    console.error('Usage: npm run statement:redact -- "path\\to\\statement.pdf" [--password]');
+    console.error('Usage: npm run statement:redact -- "path\\to\\statement.pdf" [--password]  (or a .csv/.txt export)');
+    process.exit(1);
+  }
+
+  const target = path.join(path.dirname(file), `${path.basename(file, path.extname(file))}.redacted.txt`);
+
+  // text exports (CSV and similar): redact line by line, keeping commas, quotes and tabs
+  if (/\.(csv|tsv|txt)$/i.test(file)) {
+    const text = (await readFile(file, "utf8")).replace(/^\uFEFF/, "");
+    const lines = text.split(/\r?\n/);
+    if (!lines.some((l) => l.trim())) {
+      console.error("That file is empty.");
+      process.exit(1);
+    }
+    await writeFile(target, lines.map(redactLine).join("\n"), "utf8");
+    console.log(`Redacted ${lines.length} lines.`);
+    console.log(`Saved: ${target}`);
+    console.log("Open it and check nothing personal is readable before sharing it.");
+    return;
+  }
+  if (!/\.pdf$/i.test(file)) {
+    console.error("Give a .pdf, .csv, .tsv or .txt file. For an Excel file (.xls/.xlsx), save it as CSV first.");
     process.exit(1);
   }
 
@@ -90,7 +120,7 @@ async function main() {
       console.error(
         err.code === PasswordResponses.INCORRECT_PASSWORD
           ? "That password is wrong."
-          : "This PDF has a password. Run again with --password at the end."
+          : "This PDF has a password. Run again with --password at the end.",
       );
       process.exit(1);
     }
@@ -112,7 +142,6 @@ async function main() {
     process.exit(1);
   }
 
-  const target = path.join(path.dirname(file), `${path.basename(file, path.extname(file))}.redacted.txt`);
   await writeFile(target, out.join("\n"), "utf8");
   console.log(`Redacted ${doc.numPages} page(s), ${textLines} lines.`);
   console.log(`Saved: ${target}`);
@@ -122,7 +151,7 @@ async function main() {
 // run only when called directly (the module is also imported by tests)
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch((err) => {
-    console.error("Couldn't read that PDF:", err.message);
+    console.error("Couldn't read that file:", err.message);
     process.exit(1);
   });
 }

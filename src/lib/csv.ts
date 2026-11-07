@@ -3,6 +3,8 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { findCategory } from "./transactions";
 import type { CategoryOption, CategoryRule, Transaction, TransactionType } from "./types";
 import { categoryFromRules } from "../../shared/schemas.js";
+import { categoryFromMerchant } from "../../shared/merchantCategories.js";
+import type { StatementResult, StatementRow } from "./pdfStatement";
 
 dayjs.extend(customParseFormat);
 
@@ -20,7 +22,7 @@ export const transactionsToCsv = (transactions: Transaction[], categories: Categ
       t.note,
     ]
       .map((v) => escape(String(v)))
-      .join(",")
+      .join(","),
   );
   return [header.join(","), ...lines].join("\n");
 };
@@ -69,29 +71,17 @@ export const parseCsv = (text: string): string[][] => {
 
 const DATE_FORMATS = ["YYYY-MM-DD HH:mm", "YYYY-MM-DD", "D/M/YYYY", "D/M/YYYY HH:mm", "DD/MM/YYYY", "D MMM YYYY"];
 
-export interface ImportRow {
-  transaction_type: TransactionType;
-  transaction_name: string;
-  transaction_amount: string;
-  transaction_date: string;
-  transaction_details: { category: string; transaction_note: string };
-}
-
-export interface ImportResult {
-  rows: ImportRow[];
-  errors: string[];
-}
-
-// Turns CSV text into API rows. Columns are matched by header name (any order, any case):
-// date, name, amount, type (expense/income, optional), category (name or key, optional), note (optional).
-// A blank category is filled from the user's rules.
-export const csvToImportRows = (
+// Reads a CSV for the same review screen as statement PDFs: bad lines become warnings
+// instead of blocking the whole file. Amounts can be negative (bank exports often are):
+// a negative amount with no type column is an expense.
+export const csvToStatement = (
   text: string,
+  fileName: string,
   categories: CategoryOption[],
-  rules: CategoryRule[] = []
-): ImportResult => {
+  rules: CategoryRule[] = [],
+): StatementResult => {
   const [header, ...lines] = parseCsv(text);
-  if (!header) return { rows: [], errors: ["The file is empty."] };
+  if (!header) return { kind: null, label: fileName, rows: [], warnings: ["The file is empty."] };
 
   const col = (name: string) => header.findIndex((h) => h.trim().toLowerCase() === name);
   const idx = {
@@ -103,50 +93,58 @@ export const csvToImportRows = (
     note: col("note"),
   };
   const missing = (["date", "name", "amount"] as const).filter((k) => idx[k] === -1);
-  if (missing.length) return { rows: [], errors: [`Missing column(s): ${missing.join(", ")}.`] };
+  if (missing.length) {
+    return { kind: null, label: fileName, rows: [], warnings: [`Missing column(s): ${missing.join(", ")}.`] };
+  }
 
-  const rows: ImportRow[] = [];
-  const errors: string[] = [];
-
+  const rows: StatementRow[] = [];
+  const warnings: string[] = [];
   lines.forEach((cells, i) => {
     const line = i + 2;
     const get = (k: keyof typeof idx) => (idx[k] === -1 ? "" : (cells[idx[k]] ?? "").trim());
 
-    const date = dayjs(get("date"), DATE_FORMATS, true);
-    const parsedDate = date.isValid() ? date : dayjs(get("date"));
-    if (!parsedDate.isValid()) {
-      errors.push(`Line ${line}: can't read the date "${get("date")}".`);
-      return;
+    const strict = dayjs(get("date"), DATE_FORMATS, true);
+    const date = strict.isValid() ? strict : dayjs(get("date"));
+    if (!date.isValid()) return warnings.push(`Line ${line}: can't read the date "${get("date")}".`);
+
+    const name = get("name");
+    if (!name) return warnings.push(`Line ${line}: the name is empty.`);
+
+    // allows "1,234.50", "$12", "-3.5" and "SGD 4"
+    const cleaned = get("amount").replace(/[^0-9.-]/g, "");
+    const amount = Number(cleaned);
+    if (!/\d/.test(cleaned) || !Number.isFinite(amount)) {
+      return warnings.push(`Line ${line}: can't read the amount "${get("amount")}".`);
     }
 
     const rawType = get("type").toLowerCase();
     if (rawType && rawType !== "expense" && rawType !== "income") {
-      errors.push(`Line ${line}: type must be "expense" or "income", not "${get("type")}".`);
-      return;
+      return warnings.push(`Line ${line}: type must be "expense" or "income", not "${get("type")}".`);
     }
-    const type: TransactionType = rawType === "income" ? "income" : "expense";
+    const type: TransactionType = rawType ? (rawType as TransactionType) : "expense";
 
     const rawCategory = get("category").toLowerCase();
-    const category = rawCategory
+    const given = rawCategory
       ? categories.find((c) => c.value === rawCategory || c.label.toLowerCase() === rawCategory)
-      : { value: categoryFromRules(get("name"), rules) ?? (type === "income" ? "income" : "other") };
-    if (!category) {
-      errors.push(`Line ${line}: unknown category "${get("category")}".`);
-      return;
-    }
+      : undefined;
+    if (rawCategory && !given) return warnings.push(`Line ${line}: unknown category "${get("category")}".`);
+    const category =
+      given?.value ??
+      (type === "income" ? "income" : (categoryFromRules(name, rules) ?? categoryFromMerchant(name) ?? "other"));
 
     rows.push({
-      transaction_type: type,
-      transaction_name: get("name"),
-      transaction_amount: get("amount").replace(/[^0-9.,-]/g, ""),
-      transaction_date: parsedDate.toISOString(),
-      transaction_details: {
-        category: category.value,
-        transaction_note: get("note"),
-        ...(get("date").includes(":") ? {} : { date_only: true }),
-      },
+      date: date.format("YYYY-MM-DD"),
+      at: get("date").includes(":") ? date.toISOString() : undefined,
+      name,
+      amount: Math.abs(amount),
+      type,
+      kind: type === "income" ? "income" : "spend",
+      include: amount !== 0,
+      note: get("note"),
+      source: fileName,
+      category,
+      categoryGuessed: !given,
     });
   });
-
-  return { rows, errors };
+  return { kind: null, label: fileName, rows, warnings };
 };
