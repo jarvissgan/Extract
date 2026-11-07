@@ -12,6 +12,8 @@ Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and
 - Light, Dark and "A mode" (butter yellow and pink, with classic Pooh and his hunny pot) appearances, switchable from the header or Settings
 - Fast entry: a quick-add bar ("coffee 4.50", "+3200 salary", "lunch 12 yesterday #food"), suggestions from your history,
   "Add another", undo, and shortcuts (N = add, / = quick add); a floating + button on phones
+- Import DBS/POSB credit card and account PDF statements: read on your device (never uploaded), reviewed before saving,
+  with transfers and card payments left out and duplicates detected
 - Download all your data as JSON, or delete your account
 
 Works on phones: bottom tab bar, full-screen forms, lists instead of tables, and it can be added to the home screen as an app. See [`mobile.md`](mobile.md) for the mobile-first rules every change follows.
@@ -49,6 +51,7 @@ Click **Log in** and pick a seeded user (`dev@extract.local` or `alice@extract.l
 | `npm run db:seed` | Add dummy data to the local Docker database, with custom options (see below) |
 | `npm run db:reset -- --yes` | Wipe the local Docker database and rebuild it from migrations |
 | `npm run db:down` | Stop the local Docker database (data is kept) |
+| `npm run statement:redact -- file.pdf` | Make a privacy-safe text copy of a statement PDF (digits and personal words masked) to share its layout when adding support for a new bank format |
 
 GitHub Actions runs lint, typecheck, build, API tests and browser tests on every push and pull request (`.github/workflows/ci.yml`).
 

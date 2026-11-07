@@ -1,0 +1,68 @@
+// Reads a statement PDF in the browser. The file never leaves the device: pdf.js runs here,
+// and only the transactions the user chooses are sent to the API.
+import { itemsToLines } from "../../shared/pdfLines.js";
+import { parseStatement } from "../../shared/statementParser.js";
+
+export type StatementRowKind = "spend" | "fee" | "income" | "refund" | "transfer" | "cash";
+
+export interface StatementRow {
+  date: string; // YYYY-MM-DD
+  name: string;
+  amount: number;
+  type: "expense" | "income";
+  kind: StatementRowKind;
+  include: boolean;
+  note: string;
+  source: string;
+  category: string;
+}
+
+export interface StatementResult {
+  kind: "card" | "account" | null;
+  label: string;
+  rows: StatementRow[];
+  warnings: string[];
+}
+
+export class PdfPasswordError extends Error {
+  constructor(public incorrect: boolean) {
+    super(incorrect ? "That password is wrong." : "This PDF needs a password.");
+  }
+}
+
+export async function readStatementPdf(file: File, password?: string): Promise<StatementResult> {
+  // loaded on demand: pdf.js is large and only needed here
+  const pdfjs = await import("pdfjs-dist");
+  const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  let doc;
+  try {
+    // no eval and no font loading: only the text is needed, and the site's security policy forbids eval
+    doc = await pdfjs.getDocument({ data, password, isEvalSupported: false, disableFontFace: true }).promise;
+  } catch (err) {
+    if ((err as { name?: string }).name === "PasswordException") {
+      throw new PdfPasswordError((err as { code?: number }).code === pdfjs.PasswordResponses.INCORRECT_PASSWORD);
+    }
+    throw err;
+  }
+
+  const pages = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    const { items } = await (await doc.getPage(n)).getTextContent();
+    pages.push(itemsToLines(items.filter((i) => "str" in i)));
+  }
+  await doc.destroy();
+
+  const hasText = pages.some((p) => p.length > 0);
+  if (!hasText) {
+    return {
+      kind: null,
+      label: file.name,
+      rows: [],
+      warnings: ["No text in this PDF: it's probably a scanned image, which can't be read."],
+    };
+  }
+  return parseStatement(pages) as StatementResult;
+}

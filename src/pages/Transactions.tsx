@@ -5,6 +5,7 @@ import {
   Center,
   Group,
   Loader,
+  Menu,
   MultiSelect,
   Paper,
   SegmentedControl,
@@ -19,10 +20,11 @@ import { BarChart } from "@mantine/charts";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBulb, IconCalendarStats, IconDownload, IconReceipt2, IconSearch, IconTrash, IconUpload } from "@tabler/icons-react";
+import { IconBulb, IconCalendarStats, IconDownload, IconReceipt2, IconSearch, IconTrash, IconUpload, IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
 import api from "../lib/api";
 import dayjs from "dayjs";
 import ImportModal from "../components/ImportModal";
+import StatementImportModal from "../components/StatementImportModal";
 import MonthHeader from "../components/MonthHeader";
 import QuickAddBar from "../components/QuickAddBar";
 import StatCard from "../components/StatCard";
@@ -41,6 +43,7 @@ const Transactions = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importOpened, importModal] = useDisclosure(false);
+  const [statementOpened, statementModal] = useDisclosure(false);
   const monthName = month.format("MMMM YYYY");
 
   const filtered = useMemo(() => {
@@ -201,9 +204,21 @@ const Transactions = () => {
               />
             </Group>
             <Group gap="xs" grow w={{ base: "100%", md: "auto" }}>
-              <Button variant="default" leftSection={<IconUpload size={16} />} onClick={importModal.open}>
-                Import CSV
-              </Button>
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <Button variant="default" leftSection={<IconUpload size={16} />}>
+                    Import
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item leftSection={<IconFileTypePdf size={16} />} onClick={statementModal.open}>
+                    DBS/POSB statement (PDF)
+                  </Menu.Item>
+                  <Menu.Item leftSection={<IconFileSpreadsheet size={16} />} onClick={importModal.open}>
+                    CSV file
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
               <Button
                 variant="default"
                 leftSection={<IconDownload size={16} />}
@@ -261,6 +276,7 @@ const Transactions = () => {
       )}
 
       <ImportModal opened={importOpened} onClose={importModal.close} />
+      <StatementImportModal opened={statementOpened} onClose={statementModal.close} />
     </Stack>
   );
 };
