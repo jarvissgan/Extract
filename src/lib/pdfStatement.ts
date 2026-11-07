@@ -59,13 +59,16 @@ export async function readStatementPdf(file: File, password?: string): Promise<S
   }
   await doc.destroy();
 
-  const hasText = pages.some((p) => p.length > 0);
-  if (!hasText) {
+  // e.g. only "Page 1 of 40" on each page: the transactions are images or drawn shapes
+  const lineCount = pages.reduce((n, p) => n + p.length, 0);
+  if (lineCount <= pages.length * 3) {
     return {
       kind: null,
       label: file.name,
       rows: [],
-      warnings: ["No text in this PDF: it's probably a scanned image, which can't be read."],
+      warnings: [
+        "This PDF has almost no readable text: its transactions are pictures, not text. Download your transaction history as CSV and use Import → CSV file, or use the monthly e-statement PDF.",
+      ],
     };
   }
   return parseStatement(pages) as StatementResult;
