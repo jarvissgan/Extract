@@ -391,6 +391,7 @@ test("DBS statement PDFs import with card payment credits unticked, and re-impor
   // account (card bill payment, PayLah! top-up) is included
   await expect(dialog.getByRole("checkbox", { name: "Import Card bill payment" }).first()).not.toBeChecked();
   await expect(dialog.getByRole("checkbox", { name: "Import Credit card bill payment" })).toBeChecked();
+  await expect(dialog.getByRole("combobox", { name: "Category for Credit card bill payment" })).toHaveValue("bills");
   await expect(dialog.getByRole("checkbox", { name: "Import PayLah! top-up" })).toBeChecked();
   await expect(dialog.getByRole("checkbox", { name: "Import Salary" })).toBeChecked();
   await expect(dialog.getByText("20 of 22 selected")).toBeVisible();

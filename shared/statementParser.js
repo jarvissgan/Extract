@@ -48,9 +48,11 @@ const finish = (row) => {
   const category =
     row.type === "income"
       ? "income"
-      : row.kind === "transfer"
-        ? "transfers"
-        : (categoryFromMerchant(row.name) ?? "other");
+      : /^Credit card bill payment$/.test(row.name)
+        ? "bills"
+        : row.kind === "transfer"
+          ? "transfers"
+          : (categoryFromMerchant(row.name) ?? "other");
   return { ...row, category };
 };
 
