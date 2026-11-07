@@ -52,15 +52,15 @@ const between = (min, max) => Math.round((min + random() * (max - min)) * 100) /
 const RECURRING = [
   ["Salary", 3200, "income", 25, "income"],
   ["Rent", 1200, "housing", 1, "expense"],
-  ["Phone plan", 30, "other", 5, "expense"],
-  ["Internet", 49.9, "housing", 15, "expense"],
-  ["Streaming subscription", 15.99, "other", 20, "expense"],
+  ["Phone plan", 30, "bills", 5, "expense"],
+  ["Internet", 49.9, "bills", 15, "expense"],
+  ["Streaming subscription", 15.99, "bills", 20, "expense"],
 ];
 
 // [name, min, max, weight]
 const CATALOG = {
+  groceries: [["Groceries", 25, 140, 5]],
   food: [
-    ["Groceries", 25, 140, 5],
     ["Coffee", 3.5, 7, 6],
     ["Lunch", 8, 22, 6],
     ["Dinner out", 25, 90, 3],
@@ -82,12 +82,16 @@ const CATALOG = {
     ["Hotel", 80, 200, 1],
   ],
   other: [
-    ["Movie tickets", 12, 30, 1],
+    ["Haircut", 15, 40, 1],
+  ],
+  entertainment: [["Movie tickets", 12, 30, 1]],
+  health: [
     ["Gym day pass", 10, 20, 1],
     ["Pharmacy", 6, 40, 1],
+  ],
+  shopping: [
     ["Gift", 20, 120, 1],
     ["Bookstore", 10, 45, 1],
-    ["Haircut", 15, 40, 1],
   ],
 };
 
@@ -117,7 +121,7 @@ function transactionsFor(userId) {
     const [y, m] = [first.getFullYear(), first.getMonth()];
 
     // a variable monthly bill (fixed bills come from recurring rules below)
-    if (i > 0 || now.getDate() >= 15) add("Electricity bill", between(60, 140), "housing", randomTime(y, m, 15));
+    if (i > 0 || now.getDate() >= 15) add("Electricity bill", between(60, 140), "bills", randomTime(y, m, 15));
 
     // day-to-day spending (fewer so far in the current month)
     const count = i === 0 ? Math.round((perMonth * now.getDate()) / 30) : perMonth;
@@ -139,12 +143,12 @@ try {
       budgets: { monthly: budget, categories: { food: Math.round(budget * 0.25), transport: Math.round(budget * 0.08) } },
       rules: [
         { pattern: "grab", category: "transport" },
-        { pattern: "fairprice", category: "food" },
-        { pattern: "netflix", category: "other" },
+        { pattern: "fairprice", category: "groceries" },
+        { pattern: "netflix", category: "bills" },
       ],
       notifications: { email: false },
       currency: "USD",
-      categories: [{ value: "travel", label: "Travel", color: "grape.6" }],
+      categories: [{ value: "pets", label: "Pets", color: "yellow.6" }],
     });
 
     const existing = await db.query("SELECT user_id FROM users WHERE email = ?", [email]);

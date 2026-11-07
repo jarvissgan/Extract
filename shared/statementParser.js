@@ -10,8 +10,9 @@
 //            include, note, source, category }],
 //   warnings: [string],
 // }
-// `include` is the suggested default: transfers between your own accounts and card bill
-// payments are unticked, so spending isn't counted twice.
+// `include` is the suggested default. PayLah! top-ups, funds transfers and card bill payments
+// from the bank account are ticked (money leaving the account); only the card statement's
+// "payment received" credit is unticked, since it isn't income.
 import { categoryFromMerchant } from "./merchantCategories.js";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -45,7 +46,11 @@ export function parseStatement(pages) {
 
 const finish = (row) => {
   const category =
-    row.type === "income" ? "income" : (categoryFromMerchant(row.name) ?? (row.kind === "fee" ? "other" : "other"));
+    row.type === "income"
+      ? "income"
+      : row.kind === "transfer"
+        ? "transfers"
+        : (categoryFromMerchant(row.name) ?? "other");
   return { ...row, category };
 };
 
@@ -177,10 +182,9 @@ function describeAccountTxn(desc, details, type) {
     if (type === "income") return { name: `Refund: ${merchant}`, kind: "refund", include: true };
     return { name: merchant, kind: "spend", include: true };
   }
-  if (/PAYLAH/i.test(joined)) return { name: "PayLah! top-up", kind: "transfer", include: false };
+  if (/PAYLAH/i.test(joined)) return { name: "PayLah! top-up", kind: "transfer", include: true };
   if (/Bill Payment/i.test(d)) {
-    // paying a DBS/POSB credit card: the card statement already has the spending
-    if (/DBSC|CARD|\b\d{16}\b|-\d{16}/i.test(first)) return { name: "Credit card bill payment", kind: "transfer", include: false };
+    if (/DBSC|CARD|\b\d{16}\b|-\d{16}/i.test(first)) return { name: "Credit card bill payment", kind: "transfer", include: true };
     const payee = clean(first.split(":")[0]) || "Bill";
     return { name: `Bill payment ${payee}`, kind: "spend", include: true };
   }
@@ -197,7 +201,7 @@ function describeAccountTxn(desc, details, type) {
   if (/Funds Transfer|Remittance|Transfer of Funds/i.test(d)) {
     return type === "income"
       ? { name: "Incoming transfer", kind: "income", include: true }
-      : { name: "Funds transfer", kind: "transfer", include: false };
+      : { name: "Funds transfer", kind: "transfer", include: true };
   }
   if (/GIRO/i.test(d)) return { name: clean(`GIRO ${first.split(":")[0]}`), kind: type === "income" ? "income" : "spend", include: true };
   return { name: clean(d) || "Bank transaction", kind: type === "income" ? "income" : "spend", include: true };
