@@ -33,7 +33,6 @@ import {
 } from "@tabler/icons-react";
 import api from "../lib/api";
 import dayjs from "dayjs";
-import ImportModal from "../components/ImportModal";
 import StatementImportModal from "../components/StatementImportModal";
 import MonthHeader from "../components/MonthHeader";
 import QuickAddBar from "../components/QuickAddBar";
@@ -316,7 +315,7 @@ const Transactions = () => {
         </>
       )}
 
-      <ImportModal opened={importOpened} onClose={importModal.close} onImported={showImported} />
+      <StatementImportModal format="csv" opened={importOpened} onClose={importModal.close} onImported={showImported} />
       <StatementImportModal opened={statementOpened} onClose={statementModal.close} onImported={showImported} />
     </Stack>
   );

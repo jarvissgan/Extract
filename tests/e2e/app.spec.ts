@@ -94,9 +94,20 @@ test("transactions can be searched, exported and imported", async ({ page }) => 
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.getByRole("menuitem", { name: "CSV file" }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
-  await expect(page.getByText("3 transactions ready to import.")).toBeVisible();
-  await page.getByRole("dialog").getByRole("button", { name: "Import", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Import CSV files" });
+  await expect(dialog.getByTestId("statement-row")).toHaveCount(3);
+  // blank category: guessed from the name, like statements
+  await expect(dialog.getByRole("combobox", { name: "Category for Book" })).toHaveValue("other");
+  await dialog.getByRole("button", { name: "Import 3 transactions" }).click();
   await expect(page.locator("tbody tr")).toHaveCount(3);
+
+  // the same file again: everything is caught as a duplicate
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await page.getByRole("menuitem", { name: "CSV file" }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await expect(dialog.getByText("Already in app")).toHaveCount(3);
+  await expect(dialog.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
 
   await page.getByLabel("Search transactions").fill("train");
   await expect(page.locator("tbody tr")).toHaveCount(1);
@@ -111,17 +122,21 @@ test("transactions can be searched, exported and imported", async ({ page }) => 
   expect(exported).toContain('"Train, return",3.20,expense,Transport,commute');
 });
 
-test("bad CSV rows are reported and nothing is imported", async ({ page }) => {
+test("bad CSV rows are reported and good ones can still be imported", async ({ page }) => {
   await devLogin(page, uniqueEmail("badcsv"));
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByText("Transactions", { exact: true }).click();
 
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.getByRole("menuitem", { name: "CSV file" }).click();
-  const csv = "date,name,amount\nnot a date,Coffee,4\n2026-01-01,Tea,abc";
+  const csv = "date,name,amount\nnot a date,Coffee,4\n2026-01-01,Tea,abc\n2026-01-02,Juice,-3.5";
   await page.locator('input[type="file"]').setInputFiles({ name: "bad.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
-  await expect(page.getByText(/Line 2: can't read the date/)).toBeVisible();
-  await expect(page.getByRole("dialog").getByRole("button", { name: "Import", exact: true })).toBeDisabled();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText(/Line 2: can't read the date/)).toBeVisible();
+  await expect(dialog.getByText(/Line 3: can't read the amount/)).toBeVisible();
+  // a negative amount is read as an expense
+  await expect(dialog.getByTestId("statement-row")).toHaveCount(1);
+  await expect(dialog.getByRole("button", { name: "Import 1 transaction" })).toBeEnabled();
 });
 
 test("another user's sqid in the URL redirects to your own account", async ({ page }) => {

@@ -15,6 +15,10 @@ export interface StatementRow {
   note: string;
   source: string;
   category: string;
+  // exact time (ISO) when the file has one; otherwise only the day is known
+  at?: string;
+  // false when the file set the category itself, so rules don't override it
+  categoryGuessed?: boolean;
 }
 
 export interface StatementResult {

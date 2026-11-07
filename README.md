@@ -51,7 +51,7 @@ Click **Log in** and pick a seeded user (`dev@extract.local` or `alice@extract.l
 | `npm run db:seed` | Add dummy data to the local Docker database, with custom options (see below) |
 | `npm run db:reset -- --yes` | Wipe the local Docker database and rebuild it from migrations |
 | `npm run db:down` | Stop the local Docker database (data is kept) |
-| `npm run statement:redact -- file.pdf` | Make a privacy-safe text copy of a statement PDF (digits and personal words masked) to share its layout when adding support for a new bank format |
+| `npm run statement:redact -- file.pdf` | Make a privacy-safe text copy of a statement or transaction history (PDF, or a CSV/text export) (digits and personal words masked) to share its layout when adding support for a new bank format |
 
 GitHub Actions runs lint, typecheck, build, API tests and browser tests on every push and pull request (`.github/workflows/ci.yml`).
 
@@ -92,4 +92,4 @@ curl -H "Authorization: Bearer dev:dev@extract.local" http://localhost:3000/api/
 Dates are stored in UTC. The browser sends exact start/end instants for "this month", so months follow the user's local time zone whatever the server's time zone is. Recurring transactions are dated 12:00 UTC on their day.
 
 ## CSV import format
-A header row with `date`, `name`, `amount`, and optionally `type` (`expense` or `income`), `category` (name or key) and `note`, in any order. Blank categories are filled in from your rules. Dates like `2026-11-04`, `2026-11-04 18:30` or `4/11/2026` work. Files from **Export CSV** can be imported as they are. Every row is checked before anything is saved.
+Imported CSVs get the same review screen as statements (tick or untick rows, pick categories, duplicates caught). A header row with `date`, `name`, `amount`, and optionally `type` (`expense` or `income`), `category` (name or key) and `note`, in any order. Blank categories are filled in from your rules. Dates like `2026-11-04`, `2026-11-04 18:30` or `4/11/2026` work. Files from **Export CSV** can be imported as they are. Negative amounts count as expenses. Lines that can't be read are listed and skipped.
