@@ -44,7 +44,18 @@ export async function readStatementPdf(file: File, password?: string): Promise<S
   let doc;
   try {
     // no eval and no font loading: only the text is needed, and the site's security policy forbids eval
-    doc = await pdfjs.getDocument({ data, password, isEvalSupported: false, disableFontFace: true }).promise;
+    // cMaps and standard fonts: without them, text in some fonts (common in bank-generated
+    // PDFs) comes out empty. Served from /pdfjs/ by the pdfjsAssets plugin in vite.config.ts.
+    const base = `${import.meta.env.BASE_URL}pdfjs/`;
+    doc = await pdfjs.getDocument({
+      data,
+      password,
+      isEvalSupported: false,
+      disableFontFace: true,
+      cMapUrl: `${base}cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `${base}standard_fonts/`,
+    }).promise;
   } catch (err) {
     if ((err as { name?: string }).name === "PasswordException") {
       throw new PdfPasswordError((err as { code?: number }).code === pdfjs.PasswordResponses.INCORRECT_PASSWORD);

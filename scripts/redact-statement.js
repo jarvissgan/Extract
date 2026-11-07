@@ -17,7 +17,7 @@
 // like CR/DR stay visible.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { itemsToLines } from "../shared/pdfLines.js";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
@@ -114,7 +114,17 @@ async function main() {
 
   let doc;
   try {
-    doc = await getDocument({ data, password, disableFontFace: true, verbosity: 0 }).promise;
+    // cMaps and standard fonts: without them, text in some fonts comes out empty
+    const pdfjsDir = path.join(path.dirname(fileURLToPath(import.meta.resolve("pdfjs-dist/package.json"))), path.sep);
+    doc = await getDocument({
+      data,
+      password,
+      disableFontFace: true,
+      verbosity: 0,
+      cMapUrl: path.join(pdfjsDir, "cmaps", path.sep),
+      cMapPacked: true,
+      standardFontDataUrl: path.join(pdfjsDir, "standard_fonts", path.sep),
+    }).promise;
   } catch (err) {
     if (err?.name === "PasswordException") {
       console.error(

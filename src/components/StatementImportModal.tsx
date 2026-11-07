@@ -17,7 +17,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconFileSpreadsheet, IconFileTypePdf, IconLock, IconShieldCheck } from "@tabler/icons-react";
+import { IconFileUpload, IconLock, IconShieldCheck } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import api from "../lib/api";
 import { readStatementPdf, PdfPasswordError, type StatementRow } from "../lib/pdfStatement";
@@ -27,15 +27,18 @@ import { useCurrentUser } from "../context/UserContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { categoryFromRules, describeError, importSchema, MAX_IMPORT_ROWS } from "../../shared/schemas.js";
 
+// PDFs: DBS/POSB statements. CSVs: digibank transaction history, or any CSV with date,
+// name and amount columns. Several files of either kind can be picked (or dropped) at once.
+const isCsv = (file: File) => /\.(csv|txt)$/i.test(file.name) || /csv|text\/plain/.test(file.type);
+
 interface PreviewRow extends StatementRow {
   id: string;
+  file: string;
   duplicate: boolean;
 }
 
 interface Props {
   opened: boolean;
-  // "pdf": DBS/POSB statements; "csv": any CSV with date, name and amount columns
-  format?: "pdf" | "csv";
   onClose: () => void;
   // called with the dates (ISO) of the imported transactions
   onImported?: (dates: string[]) => void;
@@ -48,7 +51,7 @@ const KIND_BADGE: Partial<Record<StatementRow["kind"], { label: string; color: s
   fee: { label: "Fee", color: "orange" },
 };
 
-const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: Props) => {
+const StatementImportModal = ({ opened, onClose, onImported }: Props) => {
   const isMobile = useIsMobile();
   const { sqid, categories, rules, formatMoney, notifyTransactionsChanged } = useCurrentUser();
   const [picked, setPicked] = useState<File[]>([]);
@@ -86,7 +89,7 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
       r.rows.map((row, i) => {
         const fromRule = row.categoryGuessed === false ? null : categoryFromRules(row.name, rules);
         const category = fromRule && knownCategory(fromRule) ? fromRule : row.category;
-        return { ...row, category, id: `${fi}-${i}`, duplicate: false };
+        return { ...row, category, id: `${fi}-${i}`, file: r.file, duplicate: false };
       }),
     );
     if (!all.length) {
@@ -133,10 +136,9 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        const result =
-          format === "csv"
-            ? csvToStatement(await file.text(), file.name, categories, rules)
-            : await readStatementPdf(file, i === 0 ? passwordForFirst : undefined);
+        const result = isCsv(file)
+          ? csvToStatement(await file.text(), file.name, categories, rules)
+          : await readStatementPdf(file, i === 0 ? passwordForFirst : undefined);
         results = [...results, { ...result, file: file.name }];
       } catch (err) {
         if (err instanceof PdfPasswordError) {
@@ -151,7 +153,7 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
           {
             label: file.name,
             rows: [],
-            warnings: [`Couldn't read this ${format === "csv" ? "file" : "PDF"}.`],
+            warnings: [`Couldn't read this ${isCsv(file) ? "file" : "PDF"}.`],
             file: file.name,
           },
         ];
@@ -193,7 +195,8 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
       transaction_details: {
         category: r.category,
         // statements note which card/account it came from; a CSV's file name isn't useful
-        transaction_note: (format === "pdf" ? [r.note, r.source].filter(Boolean).join(" · ") : r.note).slice(0, 2000),
+        // note which card/account it came from (a plain CSV's source is just its file name)
+        transaction_note: [r.note, r.source !== r.file && r.source].filter(Boolean).join(" · ").slice(0, 2000),
         ...(r.at ? {} : { date_only: true }),
       },
     }));
@@ -228,7 +231,7 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
     <Modal
       opened={opened}
       onClose={close}
-      title={format === "csv" ? "Import CSV files" : "Import DBS/POSB statements"}
+      title="Import transactions"
       size="xl"
       centered
       fullScreen={isMobile}
@@ -238,36 +241,49 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
         {!rows.length && !reading && !passwordPrompt && (
           <>
             <Alert color="teal" variant="light" icon={<IconShieldCheck size={18} />}>
-              Your {format === "csv" ? "file" : "statement"} is read on this device and never uploaded. Only the
-              transactions you choose to import are saved.
+              Your files are read on this device and never uploaded. Only the transactions you choose to import are
+              saved.
             </Alert>
-            {format === "csv" ? (
-              <Text size="sm">
-                The first row must be a header with <b>date</b>, <b>name</b> and <b>amount</b>, and optionally{" "}
-                <b>type</b> (expense or income), <b>category</b> and <b>note</b>, in any order. Dates like 2026-11-04,
-                2026-11-04 18:30 or 4/11/2026 work. Files from <b>Export CSV</b> can be imported as they are. You can
-                pick several files and you&apos;ll review everything before it&apos;s saved.
-              </Text>
-            ) : (
-              <Text size="sm">
-                Pick your DBS or POSB <b>credit card</b> and <b>account</b> statement PDFs (the monthly e-statements
-                from digibank). You can pick several at once. You&apos;ll review everything before it&apos;s saved.
-              </Text>
-            )}
+            <Text size="sm">You can pick several files at once, PDFs and CSVs mixed:</Text>
+            <List size="sm" spacing={4}>
+              <List.Item>
+                DBS/POSB <b>credit card</b> and <b>account</b> statement PDFs (the monthly e-statements)
+              </List.Item>
+              <List.Item>
+                The <b>transaction history</b> CSV from digibank
+              </List.Item>
+              <List.Item>
+                Any CSV with <b>date</b>, <b>name</b> and <b>amount</b> columns (optionally type, category and note),
+                including files from <b>Export CSV</b>
+              </List.Item>
+            </List>
+            <Text size="sm" c="dimmed">
+              You&apos;ll review everything before it&apos;s saved.
+            </Text>
           </>
         )}
 
-        <FileInput
-          label={format === "csv" ? "CSV files" : "Statement PDFs"}
-          placeholder={format === "csv" ? "Choose CSV files" : "Choose PDF files"}
-          accept={format === "csv" ? "text/csv,.csv" : "application/pdf,.pdf"}
-          multiple
-          clearable
-          leftSection={format === "csv" ? <IconFileSpreadsheet size={16} /> : <IconFileTypePdf size={16} />}
-          value={picked}
-          onChange={onPick}
-          disabled={reading || importing}
-        />
+        <div
+          data-testid="import-dropzone"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const files = [...e.dataTransfer.files].filter((f) => isCsv(f) || /\.pdf$/i.test(f.name));
+            if (files.length && !reading && !importing) onPick(files);
+          }}
+        >
+          <FileInput
+            label="Files"
+            placeholder={isMobile ? "Choose PDF or CSV files" : "Choose or drop PDF / CSV files"}
+            accept="application/pdf,.pdf,text/csv,.csv"
+            multiple
+            clearable
+            leftSection={<IconFileUpload size={16} />}
+            value={picked}
+            onChange={onPick}
+            disabled={reading || importing}
+          />
+        </div>
 
         {passwordPrompt && (
           <Card withBorder padding="md">
@@ -298,7 +314,7 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
         {reading && (
           <Group gap="sm">
             <Loader size="sm" />
-            <Text size="sm">Reading {format === "csv" ? "files" : "statements"}…</Text>
+            <Text size="sm">Reading files…</Text>
           </Group>
         )}
 
@@ -338,7 +354,7 @@ const StatementImportModal = ({ opened, onClose, onImported, format = "pdf" }: P
               </Group>
             </Group>
             <Text size="xs" c="dimmed">
-              {format === "pdf" &&
+              {rows.some((r) => r.kind === "transfer") &&
                 "Payments received on a card start unticked, since they aren't income. If you import both your card and bank statements, untick the card bill payment so spending isn't counted twice. "}
               Lines already in the app start unticked and are marked.
             </Text>

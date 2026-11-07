@@ -36,6 +36,8 @@ export function parseStatement(pages) {
   const kind = detectStatement(lines);
   if (kind === "card") return parseCard(lines);
   if (kind === "account") return parseAccount(lines);
+  const history = parseHistoryPdf(lines);
+  if (history) return history;
   return {
     kind: null,
     label: "",
@@ -465,4 +467,101 @@ function describeHistoryTxn(code, suppDesc, supp, desc, client, type) {
   }
   const name = clean(supp.replace(/\s+[A-Z0-9]*\d{6,}[A-Z0-9]*.*$/, "")) || clean(desc) || "Bank transaction";
   return { name, kind: income ? "income" : "spend", include: true };
+}
+
+// ------------------------------------------ transaction history saved as PDF
+
+const HISTORY_DATE = /^(\d{1,2})[ -]([A-Za-z]{3})[ -](\d{4})\b/;
+
+// The transaction history page saved as a PDF: a header row with a date column and
+// Debit/Credit (or Withdrawal/Deposit) columns, then one line per transaction starting
+// with a date like "05 Nov 2026", sometimes followed by more description lines.
+function parseHistoryPdf(lines) {
+  const headerAt = lines.findIndex(
+    (l) => /\bDate\b/i.test(l.text) && /Debit|Withdrawal/i.test(l.text) && /Credit|Deposit/i.test(l.text),
+  );
+  if (headerAt === -1) return null;
+  const header = lines[headerAt];
+  const edge = (re) => header.items.find((i) => re.test(i.str))?.right;
+  const columns = { debit: edge(/Debit|Withdrawal/i), credit: edge(/Credit|Deposit/i) };
+  if (columns.debit === undefined || columns.credit === undefined) return null;
+
+  const accountLine = lines
+    .slice(0, headerAt)
+    .find((l) => /Account/i.test(l.text) && /\d{3}-?\d{5,6}-?\d/.test(l.text));
+  const accountNo = accountLine && /(\d{3}-?\d{5,6}-?\d)/.exec(accountLine.text);
+  const accountName =
+    accountLine && clean(accountLine.text.replace(/Account Details For:?/i, "").replace(accountNo[1], ""));
+  const source = accountNo
+    ? `${accountName || "Account"} ••${accountNo[1].replace(/\D/g, "").slice(-4)}`
+    : "DBS/POSB account";
+
+  const rows = [];
+  const warnings = [];
+  let pending = null;
+  const flush = () => {
+    if (!pending) return;
+    const [first, ...rest] = pending.parts;
+    const all = clean(pending.parts.join(" "));
+    if (!/pending/i.test(all)) {
+      rows.push(
+        finish({
+          ...describeHistoryTxn("", all, first, all, rest.join(" "), pending.type),
+          date: pending.date,
+          amount: pending.amount,
+          type: pending.type,
+          note: "",
+          source,
+        }),
+      );
+    }
+    pending = null;
+  };
+
+  for (const line of lines.slice(headerAt + 1)) {
+    const t = line.text.trim();
+    if (/Page \d+ of \d+/i.test(t) || line === header || (/\bDate\b/i.test(t) && /Debit|Withdrawal/i.test(t))) continue;
+    const m = HISTORY_DATE.exec(t);
+    if (!m) {
+      if (pending && t) pending.parts.push(t);
+      continue;
+    }
+    flush();
+    const month = MONTHS.indexOf(m[2].toUpperCase());
+    // amounts: the items whose right edge sits under the Debit or Credit heading
+    const near = (x) => line.items.find((i) => AMOUNT.test(i.str.trim()) && Math.abs(i.right - x) < 25);
+    const debit = near(columns.debit);
+    const credit = near(columns.credit);
+    if (month === -1 || (!debit && !credit)) {
+      warnings.push(`Couldn't read the line "${t.slice(0, 40)}…".`);
+      continue;
+    }
+    const amountItem = credit ?? debit;
+    const text = line.items
+      .filter((i) => i !== debit && i !== credit)
+      .map((i) => i.str)
+      .join(" ")
+      .trim()
+      .replace(HISTORY_DATE, "");
+    pending = {
+      date: isoDate(Number(m[3]), month, Number(m[1])),
+      type: credit ? "income" : "expense",
+      amount: toAmount(amountItem.str.trim()),
+      // drop a second date (value date) and status/currency words at the start
+      parts: [clean(text.replace(/^\s*\d{1,2}[ -][A-Za-z]{3}[ -]\d{4}\s*/, "").replace(/\b(Settled|SGD)\b/g, ""))],
+    };
+  }
+  flush();
+
+  if (!rows.length) return null;
+  const dates = rows.map((r) => r.date).sort();
+  const span = [dates[0], dates[dates.length - 1]].map((d) =>
+    monthLabel(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1),
+  );
+  return {
+    kind: "history",
+    label: `DBS/POSB transaction history, ${span[0] === span[1] ? span[0] : `${span[0]} – ${span[1]}`}`,
+    rows,
+    warnings,
+  };
 }

@@ -121,3 +121,19 @@ test("digibank transaction history CSV", () => {
   assert.equal(result.rows[0].source, "DBS Multiplier Account ••7890");
   assert.equal(parseDbsHistoryCsv([["date", "name", "amount"]]), null);
 });
+
+test("transaction history saved as PDF", async () => {
+  const result = parseStatement(await readPdf("dbs-history.pdf"));
+  assert.equal(result.kind, "history");
+  assert.equal(result.label, "DBS/POSB transaction history, Nov 2026");
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(pick(result.rows), [
+    { date: "2026-11-06", name: "TOAST BOX", amount: 6.8, type: "expense", kind: "spend", include: true, category: "food" },
+    { date: "2026-11-05", name: "PayLah! top-up", amount: 20, type: "expense", kind: "transfer", include: true, category: "transfers" },
+    { date: "2026-11-05", name: "PayNow to MARY LIM", amount: 45, type: "expense", kind: "spend", include: true, category: "transfers" },
+    { date: "2026-11-04", name: "PayNow from JOHN TAN", amount: 50, type: "income", kind: "income", include: true, category: "income" },
+    { date: "2026-11-03", name: "Credit card bill payment", amount: 1023.4, type: "expense", kind: "transfer", include: true, category: "bills" },
+    { date: "2026-11-01", name: "Interest earned", amount: 0.41, type: "income", kind: "income", include: true, category: "income" },
+  ]);
+  assert.equal(result.rows[0].source, "DBS Multiplier Account ••7890");
+});

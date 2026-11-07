@@ -5,7 +5,6 @@ import {
   Center,
   Group,
   Loader,
-  Menu,
   MultiSelect,
   Paper,
   SegmentedControl,
@@ -28,8 +27,6 @@ import {
   IconSearch,
   IconTrash,
   IconUpload,
-  IconFileSpreadsheet,
-  IconFileTypePdf,
 } from "@tabler/icons-react";
 import api from "../lib/api";
 import dayjs from "dayjs";
@@ -52,7 +49,6 @@ const Transactions = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importOpened, importModal] = useDisclosure(false);
-  const [statementOpened, statementModal] = useDisclosure(false);
   const monthName = month.format("MMMM YYYY");
   // after an import, show the newest imported month if none of it is in the month on screen
   const showImported = (dates: string[]) => {
@@ -244,21 +240,9 @@ const Transactions = () => {
               />
             </Group>
             <Group gap="xs" grow w={{ base: "100%", md: "auto" }}>
-              <Menu position="bottom-end" withinPortal>
-                <Menu.Target>
-                  <Button variant="default" leftSection={<IconUpload size={16} />}>
-                    Import
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item leftSection={<IconFileTypePdf size={16} />} onClick={statementModal.open}>
-                    DBS/POSB statement (PDF)
-                  </Menu.Item>
-                  <Menu.Item leftSection={<IconFileSpreadsheet size={16} />} onClick={importModal.open}>
-                    CSV file
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+              <Button variant="default" leftSection={<IconUpload size={16} />} onClick={importModal.open}>
+                Import
+              </Button>
               <Button
                 variant="default"
                 leftSection={<IconDownload size={16} />}
@@ -315,8 +299,7 @@ const Transactions = () => {
         </>
       )}
 
-      <StatementImportModal format="csv" opened={importOpened} onClose={importModal.close} onImported={showImported} />
-      <StatementImportModal opened={statementOpened} onClose={statementModal.close} onImported={showImported} />
+      <StatementImportModal opened={importOpened} onClose={importModal.close} onImported={showImported} />
     </Stack>
   );
 };
