@@ -22,6 +22,7 @@ import dayjs from "dayjs";
 import api from "../lib/api";
 import { readStatementPdf, PdfPasswordError, type StatementRow } from "../lib/pdfStatement";
 import { csvToStatement } from "../lib/csv";
+import { findDuplicates } from "../../shared/importDuplicates.js";
 import type { TransactionRow } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -34,7 +35,8 @@ const isCsv = (file: File) => /\.(csv|txt)$/i.test(file.name) || /csv|text\/plai
 interface PreviewRow extends StatementRow {
   id: string;
   file: string;
-  duplicate: boolean;
+  // "app": already in the app; "file": also in another picked file
+  duplicate: "app" | "file" | null;
 }
 
 interface Props {
@@ -82,14 +84,14 @@ const StatementImportModal = ({ opened, onClose, onImported }: Props) => {
     onClose();
   };
 
-  // Marks rows already in the app (same day, amount and type), and repeats across the
-  // selected statements, as duplicates so they start unticked.
+  // Marks rows already in the app, and the same transaction appearing in two of the picked
+  // files, as duplicates so they start unticked (see shared/importDuplicates.js).
   const buildPreview = async (results: typeof parsed) => {
     const all = results.flatMap((r, fi) =>
       r.rows.map((row, i) => {
         const fromRule = row.categoryGuessed === false ? null : categoryFromRules(row.name, rules);
         const category = fromRule && knownCategory(fromRule) ? fromRule : row.category;
-        return { ...row, category, id: `${fi}-${i}`, file: r.file, duplicate: false };
+        return { ...row, category, id: `${fi}-${i}`, file: r.file, duplicate: null };
       }),
     );
     if (!all.length) {
@@ -98,7 +100,7 @@ const StatementImportModal = ({ opened, onClose, onImported }: Props) => {
     }
 
     const dates = all.map((r) => r.date).sort();
-    const existing = new Set<string>();
+    const existing: { date: string; amount: number; type: string; name: string }[] = [];
     try {
       const res = await api.get<TransactionRow[]>(`/transaction/user/${sqid}`, {
         params: {
@@ -109,23 +111,19 @@ const StatementImportModal = ({ opened, onClose, onImported }: Props) => {
         },
       });
       for (const t of res.data) {
-        existing.add(
-          `${dayjs(t.created_timestamp).format("YYYY-MM-DD")}|${Number(t.transaction_amount).toFixed(2)}|${t.transaction_type ?? "expense"}`,
-        );
+        existing.push({
+          date: dayjs(t.created_timestamp).format("YYYY-MM-DD"),
+          amount: Number(t.transaction_amount),
+          type: t.transaction_type ?? "expense",
+          name: t.transaction_name,
+        });
       }
     } catch {
       setProblem("Couldn't check for transactions you've already imported. Look out for duplicates.");
     }
 
-    const seen = new Set<string>();
-    setRows(
-      all.map((r) => {
-        const key = `${r.date}|${r.amount.toFixed(2)}|${r.type}`;
-        const duplicate = existing.has(key) || (r.include && seen.has(`${key}|${r.name}`));
-        seen.add(`${key}|${r.name}`);
-        return { ...r, duplicate, include: r.include && !duplicate };
-      }),
-    );
+    const found = findDuplicates(all, existing);
+    setRows(all.map((r, i) => ({ ...r, duplicate: found[i], include: r.include && !found[i] })));
   };
 
   // Reads the queued files one by one, stopping to ask when one needs a password.
@@ -400,7 +398,7 @@ const StatementImportModal = ({ opened, onClose, onImported }: Props) => {
                           )}
                           {r.duplicate && (
                             <Badge size="xs" variant="light" color="orange">
-                              Already in app
+                              {r.duplicate === "app" ? "Already in app" : "In another file"}
                             </Badge>
                           )}
                         </Group>
