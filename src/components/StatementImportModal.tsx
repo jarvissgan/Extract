@@ -300,7 +300,7 @@ const StatementImportModal = ({ opened, onClose }: Props) => {
               </Group>
             </Group>
             <Text size="xs" c="dimmed">
-              Card payments and transfers between your own accounts start unticked, so spending isn&apos;t counted twice.
+              Payments received on a card start unticked, since they aren&apos;t income. If you import both your card and bank statements, untick the card bill payment so spending isn&apos;t counted twice.
               Lines already in the app are marked too.
             </Text>
 

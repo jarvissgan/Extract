@@ -332,7 +332,7 @@ test("A mode shows Pooh and uses no gradients", async ({ page }) => {
   await expect(page.getByRole("img", { name: "Winnie-the-Pooh" })).toBeVisible();
 });
 
-test("DBS statement PDFs import with transfers unticked, and re-imports are caught as duplicates", async ({ page }) => {
+test("DBS statement PDFs import with card payment credits unticked, and re-imports are caught as duplicates", async ({ page }) => {
   await signUp(page, "statement");
   await page.getByText("Transactions", { exact: true }).click();
   // the fake statements are from Sep–Oct 2026
@@ -349,25 +349,26 @@ test("DBS statement PDFs import with transfers unticked, and re-imports are caug
 
   let dialog = await openImporter();
   await expect(dialog.getByText("is read on this device")).toHaveCount(0); // intro hidden once loaded
-  // card bill payments (2 + 1 from the account), PayLah! top-up start unticked
+  // the card statement's 2 "payment received" credits start unticked; money leaving the
+  // account (card bill payment, PayLah! top-up) is included
   await expect(dialog.getByRole("checkbox", { name: "Import Card bill payment" }).first()).not.toBeChecked();
-  await expect(dialog.getByRole("checkbox", { name: "Import Credit card bill payment" })).not.toBeChecked();
-  await expect(dialog.getByRole("checkbox", { name: "Import PayLah! top-up" })).not.toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "Import Credit card bill payment" })).toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "Import PayLah! top-up" })).toBeChecked();
   await expect(dialog.getByRole("checkbox", { name: "Import Salary" })).toBeChecked();
-  await expect(dialog.getByText("18 of 22 selected")).toBeVisible();
-  await expect(dialog.getByRole("combobox", { name: "Category for NTUC FAIRPRICE TAMPINES" })).toHaveValue("food");
+  await expect(dialog.getByText("20 of 22 selected")).toBeVisible();
+  await expect(dialog.getByRole("combobox", { name: "Category for NTUC FAIRPRICE TAMPINES" })).toHaveValue("groceries");
 
-  await dialog.getByRole("button", { name: "Import 18 transactions" }).click();
+  await dialog.getByRole("button", { name: "Import 20 transactions" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("Imported 18 transactions.")).toBeVisible();
+  await expect(page.getByText("Imported 20 transactions.")).toBeVisible();
 
   await page.goto(page.url().split("?")[0] + "?month=2026-10");
   await expect(page.getByRole("link", { name: "Salary" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "PayLah! top-up" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "PayLah! top-up" })).toBeVisible();
 
   // importing the same statements again: everything already there starts unticked
   dialog = await openImporter();
-  await expect(dialog.getByText("Already in app")).toHaveCount(18);
+  await expect(dialog.getByText("Already in app")).toHaveCount(20);
   await expect(dialog.getByText("0 of 22 selected")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
 });

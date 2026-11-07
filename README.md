@@ -59,7 +59,7 @@ GitHub Actions runs lint, typecheck, build, API tests and browser tests on every
 ```bash
 npm run db:seed -- --users me@x.com,friend@x.com --months 12 --per-month 30 --budget 1500 --seed 7
 ```
-Each user gets day-to-day spending, an electricity bill, four recurring bills and a custom "Travel" category. Re-running replaces the listed users' data and leaves other users alone. The same options and `--seed` always give the same data.
+Each user gets day-to-day spending, an electricity bill, four recurring bills and a custom "Pets" category. Re-running replaces the listed users' data and leaves other users alone. The same options and `--seed` always give the same data.
 
 ## Database migrations
 Schema changes live in `db/migrations` as numbered SQL files, applied in order and recorded in a `schema_migrations` table.

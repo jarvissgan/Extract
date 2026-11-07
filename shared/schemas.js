@@ -2,9 +2,16 @@
 import { z } from "zod";
 
 export const BUILTIN_CATEGORIES = [
-  { value: "food", label: "Food", color: "orange.6" },
-  { value: "housing", label: "Housing", color: "blue.6" },
+  { value: "food", label: "Food & dining", color: "orange.6" },
+  { value: "groceries", label: "Groceries", color: "lime.7" },
   { value: "transport", label: "Transport", color: "teal.6" },
+  { value: "shopping", label: "Shopping", color: "pink.6" },
+  { value: "bills", label: "Bills & subscriptions", color: "indigo.6" },
+  { value: "housing", label: "Housing", color: "blue.6" },
+  { value: "entertainment", label: "Entertainment", color: "grape.6" },
+  { value: "health", label: "Health", color: "red.6" },
+  { value: "travel", label: "Travel", color: "cyan.6" },
+  { value: "transfers", label: "Transfers", color: "violet.6" },
   { value: "other", label: "Other", color: "gray.6" },
   { value: "income", label: "Income", color: "green.6" },
 ];
@@ -91,15 +98,17 @@ export const preferencesSchema = z.object({
   rules: z.array(ruleSchema).max(MAX_RULES, `At most ${MAX_RULES} rules`).default([]),
   notifications: z.object({ email: z.boolean().default(false) }).default({ email: false }),
   currency: z.enum(CURRENCIES).default("USD"),
+  // a custom category whose key later became built-in (e.g. "travel") is dropped:
+  // the built-in one has the same key, so its transactions keep their category
   categories: z
-    .array(customCategorySchema)
-    .max(30, "At most 30 custom categories")
-    .default([])
-    .refine((list) => new Set(list.map((c) => c.value)).size === list.length, "Category names must be unique")
-    .refine(
-      (list) => list.every((c) => !BUILTIN_CATEGORIES.some((b) => b.value === c.value)),
-      "Custom categories can't reuse a built-in name"
-    ),
+    .preprocess(
+      (list) => (Array.isArray(list) ? list.filter((c) => !BUILTIN_CATEGORIES.some((b) => b.value === c?.value)) : list),
+      z
+        .array(customCategorySchema)
+        .max(30, "At most 30 custom categories")
+        .refine((list) => new Set(list.map((c) => c.value)).size === list.length, "Category names must be unique")
+    )
+    .default([]),
 });
 
 export const userSchema = z.object({
@@ -181,5 +190,7 @@ export const fieldErrors = (error) =>
 
 export const userCategories = (preferences) => [
   ...BUILTIN_CATEGORIES,
-  ...((preferences && preferences.categories) || []),
+  ...((preferences && preferences.categories) || []).filter(
+    (c) => !BUILTIN_CATEGORIES.some((b) => b.value === c.value)
+  ),
 ];

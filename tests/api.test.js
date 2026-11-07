@@ -124,7 +124,7 @@ test("filters by date range and rejects bad ranges", async () => {
 test("rejects unknown categories and accepts the user's custom ones", async () => {
   const unknown = await api("POST", "/transaction", {
     as: alice,
-    body: newTransaction({ transaction_details: { category: "travel" } }),
+    body: newTransaction({ transaction_details: { category: "pets" } }),
   });
   assert.equal(unknown.status, 400);
 
@@ -134,14 +134,14 @@ test("rejects unknown categories and accepts the user's custom ones", async () =
     as: alice,
     body: {
       username: me.username,
-      preference_json: { ...prefs, currency: "SGD", categories: [{ value: "travel", label: "Travel", color: "grape.6" }] },
+      preference_json: { ...prefs, currency: "SGD", categories: [{ value: "pets", label: "Pets", color: "grape.6" }] },
     },
   });
   assert.equal(saved.status, 200);
 
   const known = await api("POST", "/transaction", {
     as: alice,
-    body: newTransaction({ transaction_details: { category: "travel" } }),
+    body: newTransaction({ transaction_details: { category: "pets" } }),
   });
   assert.equal(known.status, 200);
   await api("DELETE", `/transaction/${known.body.transaction_uuid}`, { as: alice });
@@ -150,7 +150,11 @@ test("rejects unknown categories and accepts the user's custom ones", async () =
     as: alice,
     body: { username: me.username, preference_json: { categories: [{ value: "food", label: "Food 2", color: "red.6" }] } },
   });
-  assert.equal(clash.status, 400);
+  // a custom category with a built-in key is dropped (the built-in one covers it)
+  assert.equal(clash.status, 200);
+  const after = (await api("GET", "/user", { as: alice })).body;
+  const stored = typeof after.preference_json === "string" ? JSON.parse(after.preference_json) : after.preference_json;
+  assert.deepEqual(stored.categories, []);
 });
 
 test("stores transaction dates in UTC and returns them as ISO", async () => {
