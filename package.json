@@ -15,7 +15,8 @@
       "db:migrate": "node -r dotenv/config scripts/migrate.js",
       "db:seed": "node scripts/seed.js",
       "db:reset": "node scripts/db-reset.js",
-      "db:down": "node scripts/compose.js down"
+      "db:down": "node scripts/compose.js down",
+      "statement:redact": "node scripts/redact-statement.js"
    },
    "dependencies": {
       "@auth0/auth0-react": "^2.3.0",
@@ -36,6 +37,7 @@
       "express-rate-limit": "^8.7.3",
       "helmet": "^8.3.0",
       "mysql2": "^3.24.6",
+      "pdfjs-dist": "^5.4.149",
       "react": "^19.1.0",
       "react-dom": "^19.1.0",
       "react-router": "^7.4.0",
