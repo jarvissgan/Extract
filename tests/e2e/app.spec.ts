@@ -371,3 +371,13 @@ test("DBS statement PDFs import with transfers unticked, and re-imports are caug
   await expect(dialog.getByText("0 of 22 selected")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
 });
+
+test("an expired login offers to log in again instead of a dead end", async ({ page }) => {
+  await signUp(page, "expired");
+  // the API starts rejecting the session (e.g. Auth0 couldn't renew the token)
+  await page.route("**/api/user", (route) => route.fulfill({ status: 401, contentType: "application/json", body: '{"error":"Unauthorized"}' }));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Please log in again" })).toBeVisible();
+  await page.getByRole("button", { name: "Log in again" }).click();
+  await expect(page).toHaveURL(/\/dev-login\?returnTo=/);
+});

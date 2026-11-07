@@ -41,6 +41,30 @@ export const RequireAuth = () => {
 
 // Only renders child routes once the signed-in user has an account, and keeps the
 // sqid in the URL pointing at their own account.
+// Shown when the login can't be renewed: clear the stored session and log in again.
+export const SessionExpired = () => {
+  const { logout, loginWithRedirect } = useAuth0();
+  const location = useLocation();
+  const loginAgain = async () => {
+    // forget the stored tokens locally without leaving the app, then start a fresh login
+    await logout({ openUrl: false });
+    await loginWithRedirect({ appState: { returnTo: location.pathname + location.search } });
+  };
+  return (
+    <Center h="60vh" px="md">
+      <Stack align="center" gap="sm" maw={420}>
+        <Title order={3} ta="center">
+          Please log in again
+        </Title>
+        <Text c="dimmed" ta="center">
+          Your login has expired or couldn&apos;t be renewed.
+        </Text>
+        <Button onClick={loginAgain}>Log in again</Button>
+      </Stack>
+    </Center>
+  );
+};
+
 export const RequireAccount = () => {
   const { status, sqid, refreshUser } = useCurrentUser();
   const { sqid: urlSqid } = useParams();
@@ -48,6 +72,7 @@ export const RequireAccount = () => {
 
   if (status === "loading" || status === "signedOut") return <FullLoader />;
   if (status === "needsSetup") return <Navigate to="/setup" replace />;
+  if (status === "sessionExpired") return <SessionExpired />;
 
   if (status === "error" || !sqid) {
     return (

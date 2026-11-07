@@ -73,6 +73,9 @@ const RealAuthProvider = ({ children }: { children: ReactNode }) => {
       }}
       onRedirectCallback={onRedirectCallback}
       useRefreshTokens
+      // if a refresh token is missing (e.g. Auth0's offline access was off when you logged
+      // in), renew the session the other way instead of failing
+      useRefreshTokensFallback
       cacheLocation="localstorage"
     >
       {children}

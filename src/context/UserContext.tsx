@@ -13,7 +13,19 @@ import { currencySymbol, makeMoneyFormatter } from "../lib/transactions";
 import { parseJson, type CategoryOption, type CategoryRule, type UserPreferences, type UserRow } from "../lib/types";
 import { userCategories } from "../../shared/schemas.js";
 
-type Status = "loading" | "signedOut" | "needsSetup" | "ready" | "error";
+// sessionExpired: the login needs renewing (Auth0 couldn't issue a token, or the API rejected it)
+type Status = "loading" | "signedOut" | "needsSetup" | "ready" | "error" | "sessionExpired";
+
+const AUTH_ERRORS = ["missing_refresh_token", "login_required", "invalid_grant", "consent_required", "interaction_required"];
+
+const isSessionProblem = (err: unknown) => {
+  const e = err as { error?: string; message?: string; response?: { status?: number } };
+  return (
+    (e.error && AUTH_ERRORS.includes(e.error)) ||
+    /refresh token|login required/i.test(e.message ?? "") ||
+    e.response?.status === 401
+  );
+};
 
 interface UserContextValue {
   status: Status;
@@ -55,7 +67,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     } catch (err) {
       console.error("Unable to load the signed-in user", err);
       setUser(null);
-      setStatus("error");
+      setStatus(isSessionProblem(err) ? "sessionExpired" : "error");
     }
   }, []);
 

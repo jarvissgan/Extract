@@ -4,6 +4,7 @@ import { Button, Center, Loader, Paper, Stack, Text, Title } from "@mantine/core
 import { useNavigate } from "react-router";
 import UserAccountForm from "../components/UserAccountForm";
 import { useCurrentUser } from "../context/UserContext";
+import { SessionExpired } from "../components/RouteGuards";
 
 const UserSetup = () => {
   const { user } = useAuth0();
@@ -13,6 +14,8 @@ const UserSetup = () => {
   useEffect(() => {
     if (status === "ready" && sqid) navigate(`/home/${sqid}`, { replace: true });
   }, [status, sqid, navigate]);
+
+  if (status === "sessionExpired") return <SessionExpired />;
 
   if (status === "error") {
     return (
