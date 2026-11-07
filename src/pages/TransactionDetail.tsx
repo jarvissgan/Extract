@@ -1,14 +1,18 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import {
+  Anchor,
   Badge,
   Button,
+  Card,
+  Grid,
   Center,
   Divider,
   Group,
   Loader,
   NumberInput,
   SegmentedControl,
+  SimpleGrid,
   Select,
   Stack,
   Text,
@@ -24,7 +28,8 @@ import { useTransactionEntry } from "../context/TransactionEntry";
 import { useIsMobile } from "../hooks/useIsMobile";
 import dayjs from "dayjs";
 import api, { errorStatus } from "../lib/api";
-import { formatDateTime, toTransaction } from "../lib/transactions";
+import { findCategory, formatDateTime, toTransaction } from "../lib/transactions";
+import { useRangeTransactions } from "../hooks/useMonthTransactions";
 import type { Transaction, TransactionRow, TransactionType } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
 import { categoryFromRules, fieldErrors, transactionSchema, userSchema } from "../../shared/schemas.js";
@@ -41,6 +46,102 @@ const errorMessage = (error: unknown) => {
     default:
       return "Unexpected error. Please try again.";
   }
+};
+
+// Summary of the transaction, and others with the same name over the past year.
+const SidePanel = ({ transaction }: { transaction: Transaction }) => {
+  const { sqid, categories, formatMoney } = useCurrentUser();
+  // stable for the day, so the list doesn't refetch on every render
+  const start = useMemo(() => dayjs().subtract(12, "month").startOf("month"), []);
+  const end = useMemo(() => dayjs().endOf("day"), []);
+  const { transactions, loading } = useRangeTransactions(start, end);
+  const category = findCategory(categories, transaction.category);
+  const income = transaction.type === "income";
+
+  const same = transactions.filter(
+    (t) => t.name.trim().toLowerCase() === transaction.name.trim().toLowerCase() && t.type === transaction.type,
+  );
+  const others = same.filter((t) => t.uuid !== transaction.uuid);
+  const total = same.reduce((sum, t) => sum + t.amount, 0);
+
+  return (
+    <Stack gap="lg">
+      {/* only beside the form on wide screens; narrower screens already show it in the form */}
+      <Card padding="lg" shadow="xs" visibleFrom="lg">
+        <Text size="xs" c="dimmed" tt="uppercase" fw={700} lts={0.4} mb={6}>
+          Summary
+        </Text>
+        <Title order={2} c={income ? "teal" : undefined} className="tabular">
+          {income ? "+" : ""}
+          {formatMoney(transaction.amount)}
+        </Title>
+        <Text fw={600} mt={4} truncate>
+          {transaction.name}
+        </Text>
+        <Group gap={6} mt="xs">
+          <Badge variant="light" color={income ? "teal" : "gray"}>
+            {income ? "Income" : "Expense"}
+          </Badge>
+          <Badge variant="light" color={category.color}>
+            {category.label}
+          </Badge>
+          {transaction.recurring && (
+            <Badge variant="light" leftSection={<IconRepeat size={12} />}>
+              Recurring
+            </Badge>
+          )}
+        </Group>
+        <Text size="sm" c="dimmed" mt="sm">
+          {dayjs(transaction.createdAt).format("dddd, D MMMM YYYY · h:mm A")}
+        </Text>
+        {transaction.updatedAt && (
+          <Text size="xs" c="dimmed" mt={4}>
+            Last updated {formatDateTime(transaction.updatedAt)}
+          </Text>
+        )}
+      </Card>
+
+      <Card padding="lg" shadow="xs">
+        <Text size="xs" c="dimmed" tt="uppercase" fw={700} lts={0.4} mb={6}>
+          “{transaction.name}” in the past year
+        </Text>
+        {loading ? (
+          <Loader size="sm" />
+        ) : others.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            This is the only one in the past 12 months.
+          </Text>
+        ) : (
+          <Stack gap="xs">
+            <Text size="sm">
+              <b>{same.length}</b> times · {income ? "received" : "spent"}{" "}
+              <b className="tabular">{formatMoney(total)}</b> · about {formatMoney(total / 12)} a month
+            </Text>
+            <Stack gap={0}>
+              {others.slice(0, 6).map((t, i) => (
+                <div key={t.uuid}>
+                  {i > 0 && <Divider />}
+                  <Group justify="space-between" py={6} wrap="nowrap">
+                    <Anchor component={Link} to={`/transactions/${sqid}/${t.uuid}`} size="sm">
+                      {dayjs(t.createdAt).format("D MMM YYYY")}
+                    </Anchor>
+                    <Text size="sm" className="tabular">
+                      {formatMoney(t.amount)}
+                    </Text>
+                  </Group>
+                </div>
+              ))}
+            </Stack>
+            {others.length > 6 && (
+              <Text size="xs" c="dimmed">
+                and {others.length - 6} more
+              </Text>
+            )}
+          </Stack>
+        )}
+      </Card>
+    </Stack>
+  );
 };
 
 const TransactionDetail = () => {
@@ -224,13 +325,15 @@ const TransactionDetail = () => {
   }
 
   return (
-    <Stack p={{ base: "md", md: "xl" }} maw={720}>
+    <Stack p={{ base: "md", md: "xl" }} maw={1240}>
       <Group justify="space-between" gap="sm">
-        <Group gap="sm" wrap="nowrap">
-          <Button variant="subtle" px="xs" leftSection={<IconArrowLeft size={16} />} onClick={() => navigate(listPath)}>
+        <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+          <Button variant="subtle" px="xs" style={{ flexShrink: 0 }} leftSection={<IconArrowLeft size={16} />} onClick={() => navigate(listPath)}>
             Back
           </Button>
-          <Title order={3}>Transaction details</Title>
+          <Title order={3} style={{ minWidth: 0 }}>
+            Transaction details
+          </Title>
           {original.recurring && (
             <Badge variant="light" leftSection={<IconRepeat size={12} />}>
               Recurring
@@ -238,10 +341,10 @@ const TransactionDetail = () => {
           )}
         </Group>
         {!editing && (
-          <Group gap="xs" grow w={{ base: "100%", sm: "auto" }}>
+          <Group gap="xs" grow={isMobile} w={{ base: "100%", sm: "auto" }}>
             <Button
               variant="default"
-              leftSection={<IconCopy size={16} />}
+              leftSection={isMobile ? undefined : <IconCopy size={16} />}
               onClick={() =>
                 openAdd({
                   type: original.type,
@@ -255,7 +358,12 @@ const TransactionDetail = () => {
               Add again
             </Button>
             <Button onClick={() => setEditing(true)}>Edit</Button>
-            <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={confirmDelete}>
+            <Button
+              color="red"
+              variant="light"
+              leftSection={isMobile ? undefined : <IconTrash size={16} />}
+              onClick={confirmDelete}
+            >
               Delete
             </Button>
           </Group>
@@ -264,86 +372,91 @@ const TransactionDetail = () => {
 
       <Divider />
 
-      <form onSubmit={save} noValidate>
-        <Stack>
-          <SegmentedControl
-            aria-label="Type"
-            readOnly={!editing}
-            value={type}
-            onChange={(v) => setType(v as TransactionType)}
-            data={[
-              { value: "expense", label: "Expense" },
-              { value: "income", label: "Income" },
-            ]}
-            w="fit-content"
-          />
-          <TextInput
-            required
-            readOnly={!editing}
-            label="Name"
-            value={name}
-            error={errors.transaction_name}
-            onChange={(e) => setName(e.currentTarget.value)}
-          />
-          <NumberInput
-            required
-            readOnly={!editing}
-            label="Amount"
-            prefix={currencySymbol}
-            thousandSeparator=","
-            decimalScale={2}
-            fixedDecimalScale
-            allowNegative={false}
-            value={amount}
-            error={errors.transaction_amount}
-            onChange={setAmount}
-          />
-          <Group grow align="flex-start">
-            <Select
-              readOnly={!editing}
-              label="Category"
-              value={category}
-              onChange={(value) => setCategory(value || "other")}
-              data={categories.map(({ value, label }) => ({ value, label }))}
-              allowDeselect={false}
-              error={errors["transaction_details.category"]}
-            />
-            <DateTimePicker
-              readOnly={!editing}
-              label="Date"
-              value={date}
-              onChange={setDate}
-              valueFormat="D MMM YYYY, h:mm A"
-              dropdownType={isMobile ? "modal" : "popover"}
-              maxDate={new Date()}
-            />
-          </Group>
-          <Textarea
-            readOnly={!editing}
-            label="Note"
-            autosize
-            minRows={3}
-            value={note}
-            error={errors["transaction_details.transaction_note"]}
-            onChange={(e) => setNote(e.currentTarget.value)}
-          />
-          {original.updatedAt && (
-            <Text size="sm" c="dimmed">
-              Last updated {formatDateTime(original.updatedAt)}
-            </Text>
-          )}
-          {editing && (
-            <Group justify="flex-end" grow={isMobile}>
-              <Button variant="default" onClick={cancelEdit}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={saving}>
-                Save changes
-              </Button>
-            </Group>
-          )}
-        </Stack>
-      </form>
+      {/* wide screens: the form on the left, a summary and related transactions on the right */}
+      <Grid gutter="lg">
+        <Grid.Col span={{ base: 12, lg: 8 }}>
+          <Card padding="lg" shadow="xs">
+            <form onSubmit={save} noValidate>
+              <Stack>
+                <SegmentedControl
+                  aria-label="Type"
+                  readOnly={!editing}
+                  value={type}
+                  onChange={(v) => setType(v as TransactionType)}
+                  data={[
+                    { value: "expense", label: "Expense" },
+                    { value: "income", label: "Income" },
+                  ]}
+                  w="fit-content"
+                />
+                <TextInput
+                  required
+                  readOnly={!editing}
+                  label="Name"
+                  value={name}
+                  error={errors.transaction_name}
+                  onChange={(e) => setName(e.currentTarget.value)}
+                />
+                <NumberInput
+                  required
+                  readOnly={!editing}
+                  label="Amount"
+                  prefix={currencySymbol}
+                  thousandSeparator=","
+                  decimalScale={2}
+                  fixedDecimalScale
+                  allowNegative={false}
+                  value={amount}
+                  error={errors.transaction_amount}
+                  onChange={setAmount}
+                />
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Select
+                    readOnly={!editing}
+                    label="Category"
+                    value={category}
+                    onChange={(value) => setCategory(value || "other")}
+                    data={categories.map(({ value, label }) => ({ value, label }))}
+                    allowDeselect={false}
+                    error={errors["transaction_details.category"]}
+                  />
+                  <DateTimePicker
+                    readOnly={!editing}
+                    label="Date"
+                    value={date}
+                    onChange={setDate}
+                    valueFormat="D MMM YYYY, h:mm A"
+                    dropdownType={isMobile ? "modal" : "popover"}
+                    maxDate={new Date()}
+                  />
+                </SimpleGrid>
+                <Textarea
+                  readOnly={!editing}
+                  label="Note"
+                  autosize
+                  minRows={3}
+                  value={note}
+                  error={errors["transaction_details.transaction_note"]}
+                  onChange={(e) => setNote(e.currentTarget.value)}
+                />
+                {editing && (
+                  <Group justify="flex-end" grow={isMobile}>
+                    <Button variant="default" onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" loading={saving}>
+                      Save changes
+                    </Button>
+                  </Group>
+                )}
+              </Stack>
+            </form>
+          </Card>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 4 }}>
+          <SidePanel transaction={original} />
+        </Grid.Col>
+      </Grid>
     </Stack>
   );
 };

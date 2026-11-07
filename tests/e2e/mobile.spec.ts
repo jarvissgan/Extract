@@ -12,6 +12,15 @@ const devLogin = async (page: Page, email: string) => {
 const nav = (page: Page) => page.getByRole("navigation", { name: "Main" });
 
 // how far the page can scroll sideways (should be 0)
+// buttons whose label doesn't fit (cut off), e.g. ["Add agai"]
+const clippedButtonText = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll("button, button *")]
+      .filter((e) => (e as HTMLElement).offsetParent && e.scrollWidth > e.clientWidth + 1)
+      .map((e) => e.textContent?.trim())
+      .filter(Boolean)
+  );
+
 const horizontalOverflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
@@ -55,6 +64,7 @@ test("no page scrolls sideways on a phone, in any appearance", async ({ page }) 
   await page.locator('[data-testid="transaction-item"]').first().click();
   await expect(page.getByRole("heading", { name: "Transaction details" })).toBeVisible();
   expect(await horizontalOverflow(page), "Transaction details").toBeLessThanOrEqual(0);
+  expect(await clippedButtonText(page), "button text cut off on Transaction details").toEqual([]);
 });
 
 test("bottom navigation, full-screen add, and a list instead of a table", async ({ page }) => {
