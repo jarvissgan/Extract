@@ -137,3 +137,22 @@ test("transaction history saved as PDF", async () => {
   ]);
   assert.equal(result.rows[0].source, "DBS Multiplier Account ••7890");
 });
+
+test("a card's transaction history CSV names transactions from its description", () => {
+  const table = [
+    ["Card Details For:", "DBS Live Fresh Card 4119-1100-2233-4455"],
+    [""],
+    ["Transaction Date", "Transaction Posting Date", "Transaction Description", "Transaction Type", "Payment Type", "Transaction Status", "Debit Amount", "Credit Amount"],
+    ["06 Nov 2026", "07 Nov 2026", "GRAB* A-8XYZ123 SINGAPORE SG", "Purchase", "Contactless", "Settled", "18.60", ""],
+    ["05 Nov 2026", "06 Nov 2026", "PAYMENT - DBS INTERNET/WIRELESS", "Payment", "", "Settled", "", "500.00"],
+    ["04 Nov 2026", "05 Nov 2026", "SHOPEE SINGAPORE MP SINGAPORE SG", "Refund", "", "Settled", "", "42.10"],
+  ];
+  const result = parseDbsHistoryCsv(table);
+  assert.equal(result.label, "DBS/POSB card transaction history, Nov 2026");
+  assert.deepEqual(pick(result.rows), [
+    { date: "2026-11-06", name: "GRAB* A-8XYZ123", amount: 18.6, type: "expense", kind: "spend", include: true, category: "transport" },
+    { date: "2026-11-05", name: "Card bill payment", amount: 500, type: "income", kind: "transfer", include: false, category: "income" },
+    { date: "2026-11-04", name: "Refund: SHOPEE SINGAPORE MP", amount: 42.1, type: "income", kind: "refund", include: true, category: "income" },
+  ]);
+  assert.equal(result.rows[0].source, "DBS Live Fresh Card ••4455");
+});

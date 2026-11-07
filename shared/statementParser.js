@@ -70,6 +70,23 @@ const FOREIGN_LINE = /^([A-Z][A-Z. ]{2,}?)\s+(\d{1,3}(?:,\d{3})*\.\d{2})$/;
 // trailing "SINGAPORE SG", "SG", "SGP", "(SGP) SG" location noise on card lines
 const cardMerchant = (desc) => clean(desc.replace(/\s+\(?SGP\)?(\s+SG)?$/i, "").replace(/\s+(SINGAPORE\s+)?SG$/i, ""));
 
+function describeCardTxn(desc, credit) {
+  if (credit && /PAYMENT|PYMT/i.test(desc))
+    return { name: "Card bill payment", type: "income", kind: "transfer", include: false };
+  if (credit) {
+    const cashback = /CASHBACK|REBATE/i.test(desc);
+    return {
+      name: cashback ? `Cashback (${cardMerchant(desc)})` : `Refund: ${cardMerchant(desc)}`,
+      type: "income",
+      kind: "refund",
+      include: true,
+    };
+  }
+  if (/\bFEE\b|CHARGE|INTEREST|FINANCE/i.test(desc))
+    return { name: cardMerchant(desc), type: "expense", kind: "fee", include: true };
+  return { name: cardMerchant(desc), type: "expense", kind: "spend", include: true };
+}
+
 function parseCard(lines) {
   const warnings = [];
   const rows = [];
@@ -121,22 +138,7 @@ function parseCard(lines) {
       const amount = toAmount(m[4]);
       const credit = !!m[5];
 
-      let row;
-      if (credit && /PAYMENT/i.test(desc)) {
-        row = { name: "Card bill payment", type: "income", kind: "transfer", include: false };
-      } else if (credit) {
-        const cashback = /CASHBACK|REBATE/i.test(desc);
-        row = {
-          name: cashback ? `Cashback (${cardMerchant(desc)})` : `Refund: ${cardMerchant(desc)}`,
-          type: "income",
-          kind: "refund",
-          include: true,
-        };
-      } else if (/\bFEE\b|CHARGE|INTEREST|FINANCE/i.test(desc)) {
-        row = { name: cardMerchant(desc), type: "expense", kind: "fee", include: true };
-      } else {
-        row = { name: cardMerchant(desc), type: "expense", kind: "spend", include: true };
-      }
+      const row = describeCardTxn(desc, credit);
       last = finish({
         ...row,
         date: isoDate(year, month, day),
@@ -348,17 +350,21 @@ export function parseDbsHistoryCsv(table) {
 
   const header = table[headerAt].map((c) => c.trim().toLowerCase());
   const col = (name) => header.indexOf(name);
+  const first = (...names) => names.map(col).find((i) => i !== -1) ?? -1;
   const at = {
     date: col("transaction date"),
     code: col("statement code"),
-    desc: col("description"),
+    desc: first("description", "transaction description", "transaction details", "details", "particulars", "merchant"),
     supp: col("supplementary code"),
     suppDesc: col("supplementary code description"),
     client: col("client reference"),
-    status: col("status"),
+    status: first("status", "transaction status"),
     debit: col("debit amount"),
     credit: col("credit amount"),
   };
+
+  // a credit card's history has a description but none of the bank account's code columns
+  const isCard = at.code === -1 && at.supp === -1;
 
   const summary = Object.fromEntries(
     table
@@ -366,11 +372,13 @@ export function parseDbsHistoryCsv(table) {
       .filter((r) => r[0])
       .map((r) => [r[0].trim().replace(/:$/, "").toLowerCase(), (r[1] ?? "").trim()]),
   );
-  const accountName = summary["account details for"] || "";
-  const accountNo = /([\d-]{6,})\s*$/.exec(accountName);
+  // "Account Details For: DBS Multiplier Account 120-456789-0", or a card's name and number
+  const accountName =
+    summary["account details for"] || Object.entries(summary).find(([k]) => /card/.test(k))?.[1] || "";
+  const accountNo = /([\d -]{6,})\s*$/.exec(accountName);
   const source = accountNo
-    ? `${clean(accountName.replace(accountNo[0], "")) || "Account"} ••${accountNo[1].replace(/\D/g, "").slice(-4)}`
-    : accountName || "DBS/POSB account";
+    ? `${clean(accountName.replace(accountNo[0], "")) || (isCard ? "Card" : "Account")} ••${accountNo[1].replace(/\D/g, "").slice(-4)}`
+    : accountName || (isCard ? "DBS/POSB card" : "DBS/POSB account");
 
   const rows = [];
   const warnings = [];
@@ -393,7 +401,9 @@ export function parseDbsHistoryCsv(table) {
 
     rows.push(
       finish({
-        ...describeHistoryTxn(get("code"), get("suppDesc"), get("supp"), get("desc"), get("client"), type),
+        ...(isCard
+          ? describeCardTxn(get("desc"), type === "income")
+          : describeHistoryTxn(get("code"), get("suppDesc"), get("supp"), get("desc"), get("client"), type)),
         date: isoDate(Number(m[3]), month, Number(m[1])),
         amount: credit || debit,
         type,
@@ -404,11 +414,16 @@ export function parseDbsHistoryCsv(table) {
   });
 
   if (!rows.length) warnings.push("No transactions found in this file.");
+  else if (rows.filter((r) => r.name === "Bank transaction").length > rows.length / 2) {
+    warnings.push(
+      "Couldn't find the transaction names in this file's columns. Run npm run statement:redact on it and share the result so this format can be supported.",
+    );
+  }
   const dates = rows.map((r) => r.date).sort();
   const span = dates.length
     ? [dates[0], dates[dates.length - 1]].map((d) => monthLabel(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1))
     : [];
-  const label = `DBS/POSB transaction history${span.length ? `, ${span[0] === span[1] ? span[0] : `${span[0]} – ${span[1]}`}` : ""}`;
+  const label = `DBS/POSB ${isCard ? "card " : ""}transaction history${span.length ? `, ${span[0] === span[1] ? span[0] : `${span[0]} – ${span[1]}`}` : ""}`;
   return { kind: "history", label, rows, warnings };
 }
 
