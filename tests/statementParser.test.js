@@ -71,7 +71,7 @@ test("deposit account statement", async () => {
     { date: "2026-10-03", name: "Cashback (DBS VISA DEBIT CASHBACK JULY)", amount: 2.5, type: "income", kind: "refund", include: true, category: "income" },
     { date: "2026-10-04", name: "PayLah! top-up", amount: 20, type: "expense", kind: "transfer", include: true, category: "transfers" },
     { date: "2026-10-05", name: "BUS/MRT 123456789", amount: 12.3, type: "expense", kind: "spend", include: true, category: "transport" },
-    { date: "2026-10-06", name: "Credit card bill payment", amount: 300, type: "expense", kind: "transfer", include: true, category: "transfers" },
+    { date: "2026-10-06", name: "Credit card bill payment", amount: 300, type: "expense", kind: "transfer", include: true, category: "bills" },
     { date: "2026-10-25", name: "Salary", amount: 4850, type: "income", kind: "income", include: true, category: "income" },
     { date: "2026-10-26", name: "PayNow to MARY LIM", amount: 45, type: "expense", kind: "spend", include: true, category: "transfers" },
     { date: "2026-10-27", name: "Bill payment SP-87654321", amount: 60, type: "expense", kind: "spend", include: true, category: "bills" },
@@ -114,7 +114,7 @@ test("digibank transaction history CSV", () => {
     { date: "2026-11-05", name: "PayLah! top-up", amount: 20, type: "expense", kind: "transfer", include: true, category: "transfers" },
     { date: "2026-11-05", name: "PayNow to MARY LIM", amount: 45, type: "expense", kind: "spend", include: true, category: "transfers" },
     { date: "2026-11-04", name: "PayNow from JOHN TAN (JOHN TAN)", amount: 50, type: "income", kind: "income", include: true, category: "income" },
-    { date: "2026-11-03", name: "Credit card bill payment", amount: 1023.4, type: "expense", kind: "transfer", include: true, category: "transfers" },
+    { date: "2026-11-03", name: "Credit card bill payment", amount: 1023.4, type: "expense", kind: "transfer", include: true, category: "bills" },
     { date: "2026-11-02", name: "Salary", amount: 4850, type: "income", kind: "income", include: true, category: "income" },
     { date: "2026-11-01", name: "Interest earned", amount: 0.41, type: "income", kind: "income", include: true, category: "income" },
   ]); // the pending ATM withdrawal is left out until it settles
