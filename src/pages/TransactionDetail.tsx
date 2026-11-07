@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import {
   Anchor,
   Badge,
@@ -51,6 +51,8 @@ const errorMessage = (error: unknown) => {
 // Summary of the transaction, and others with the same name over the past year.
 const SidePanel = ({ transaction }: { transaction: Transaction }) => {
   const { sqid, categories, formatMoney } = useCurrentUser();
+  // keep where Back goes when hopping between past transactions
+  const { state: backState } = useLocation();
   // stable for the day, so the list doesn't refetch on every render
   const start = useMemo(() => dayjs().subtract(12, "month").startOf("month"), []);
   const end = useMemo(() => dayjs().endOf("day"), []);
@@ -124,7 +126,7 @@ const SidePanel = ({ transaction }: { transaction: Transaction }) => {
                 <div key={t.uuid}>
                   {i > 0 && <Divider />}
                   <Group justify="space-between" py={6} wrap="nowrap">
-                    <Anchor component={Link} to={`/transactions/${sqid}/${t.uuid}`} size="sm">
+                    <Anchor component={Link} to={`/transactions/${sqid}/${t.uuid}`} state={backState} size="sm">
                       {dayjs(t.createdAt).format("D MMM YYYY")}
                     </Anchor>
                     <Text size="sm" className="tabular">
@@ -153,7 +155,10 @@ const TransactionDetail = () => {
   const navigate = useNavigate();
   const { openAdd } = useTransactionEntry();
   const isMobile = useIsMobile();
-  const listPath = `/transactions/${sqid}`;
+  // back to the page (and month) the transaction was opened from
+  const { state } = useLocation();
+  const fromPath = (state as { from?: string } | null)?.from;
+  const listPath = fromPath ?? `/transactions/${sqid}`;
 
   const [original, setOriginal] = useState<Transaction | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);

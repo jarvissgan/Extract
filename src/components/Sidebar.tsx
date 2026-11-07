@@ -15,6 +15,7 @@ import { useCurrentUser } from "../context/UserContext";
 import { useTransactionEntry } from "../context/TransactionEntry";
 import { ctaProps, useAppearance } from "../theme/Appearance";
 import { PoohBear } from "./Pooh";
+import { useMonthQuery } from "../hooks/useMonthTransactions";
 
 const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
   const { openAdd } = useTransactionEntry();
   const { appearance } = useAppearance();
 
+  const month = useMonthQuery();
   const go = (route: string) => {
     navigate(route);
     onNavigate();
@@ -31,8 +33,8 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const links = sqid
     ? [
-        { label: "Home", icon: IconHome, to: `/home/${sqid}` },
-        { label: "Transactions", icon: IconListDetails, to: `/transactions/${sqid}` },
+        { label: "Home", icon: IconHome, to: `/home/${sqid}${month}` },
+        { label: "Transactions", icon: IconListDetails, to: `/transactions/${sqid}${month}` },
         { label: "Reports", icon: IconChartBar, to: "/reports" },
         { label: "Savings", icon: IconPigMoney, to: "/savings" },
         { label: "Settings", icon: IconSettings, to: "/settings" },
@@ -74,7 +76,7 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
               label={label}
               fw={500}
               leftSection={<Icon size={19} stroke={1.6} />}
-              active={pathname.startsWith(to)}
+              active={pathname.startsWith(to.split("?")[0])}
               onClick={() => go(to)}
             />
           ))}

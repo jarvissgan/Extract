@@ -3,6 +3,7 @@ import { IconChartBar, IconHome, IconListDetails, IconPigMoney, IconPlus } from 
 import { Link, useLocation } from "react-router";
 import { useCurrentUser } from "../context/UserContext";
 import { useTransactionEntry } from "../context/TransactionEntry";
+import { useMonthQuery } from "../hooks/useMonthTransactions";
 
 // Bottom tab bar for phones. Tabs are links (so they work with long-press, back, etc.),
 // with a raised + in the middle for the most common action.
@@ -10,10 +11,11 @@ const MobileNav = () => {
   const { sqid } = useCurrentUser();
   const { openAdd } = useTransactionEntry();
   const { pathname } = useLocation();
+  const month = useMonthQuery();
 
   const tabs = [
-    { label: "Home", icon: IconHome, to: `/home/${sqid}` },
-    { label: "Transactions", icon: IconListDetails, to: `/transactions/${sqid}` },
+    { label: "Home", icon: IconHome, to: `/home/${sqid}${month}` },
+    { label: "Transactions", icon: IconListDetails, to: `/transactions/${sqid}${month}` },
     null, // the + button
     { label: "Reports", icon: IconChartBar, to: "/reports" },
     { label: "Savings", icon: IconPigMoney, to: "/savings" },
@@ -37,7 +39,7 @@ const MobileNav = () => {
             </ActionIcon>
           );
         }
-        const active = pathname.startsWith(tab.to);
+        const active = pathname.startsWith(tab.to.split("?")[0]);
         const Icon = tab.icon;
         return (
           <UnstyledButton

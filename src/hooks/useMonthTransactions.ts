@@ -1,10 +1,26 @@
 import { useEffect, useState } from "react";
 import dayjs, { type Dayjs } from "dayjs";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import api from "../lib/api";
 import { expensesOf, incomeOf, sumAmounts, toTransaction } from "../lib/transactions";
 import type { Transaction, TransactionRow } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
+
+// Where a transaction link was opened from (page + ?month=), so Back returns there.
+export const useFromHere = () => {
+  const { pathname, search } = useLocation();
+  return { from: pathname + search };
+};
+
+// "?month=YYYY-MM" for the month being looked at, from this page's URL or, on a
+// transaction's page, the list it was opened from. Menu links keep it, so moving between
+// Home and Transactions (or coming back from a transaction) stays on that month.
+export const useMonthQuery = () => {
+  const { search, state } = useLocation();
+  const from = (state as { from?: string } | null)?.from ?? "";
+  const month = /[?&]month=(\d{4}-\d{2})/.exec(search)?.[1] ?? /[?&]month=(\d{4}-\d{2})/.exec(from)?.[1];
+  return month ? `?month=${month}` : "";
+};
 
 // The selected month lives in the URL (?month=YYYY-MM) so it survives refreshes and links.
 export const useSelectedMonth = () => {
