@@ -139,6 +139,29 @@ test("bad CSV rows are reported and good ones can still be imported", async ({ p
   await expect(dialog.getByRole("button", { name: "Import 1 transaction" })).toBeEnabled();
 });
 
+test("a digibank transaction history CSV is read with its own columns", async ({ page }) => {
+  await devLogin(page, uniqueEmail("history"));
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByText("Transactions", { exact: true }).click();
+  const csv = [
+    '"Account Details For:","POSB Savings Account 123-45678-9",,,,,,,,,,',
+    '"",,,,,,,,,,,',
+    '"Transaction Date","Value Date","Statement Code","Description","Supplementary Code","Supplementary Code Description","Client Reference","Additional Reference","Status","Currency","Debit Amount","Credit Amount"',
+    '"06 Oct 2026","","POS","UMC TOAST BOX   SI SGP 05OCT","UMC TOAST BOX   SI SGP 05OCT","Point-of-Sale Transaction","","","Settled","SGD",6.8,""',
+    '"05 Oct 2026","","TOP","TOP-UP TO PAYLAH! : 91234567","TOP TOP-UP TO PAYLAH! :","Advice","","","Settled","SGD",20,""',
+  ].join("\n");
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await page.getByRole("menuitem", { name: "CSV file" }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: "transaction_history.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByTestId("statement-row")).toHaveCount(2);
+  await expect(dialog.getByRole("combobox", { name: "Category for TOAST BOX" })).toHaveValue("food");
+  await expect(dialog.getByRole("checkbox", { name: "Import PayLah! top-up" })).toBeChecked();
+  await dialog.getByRole("button", { name: "Import 2 transactions" }).click();
+  await expect(page).toHaveURL(/month=2026-10/);
+  await expect(page.getByRole("link", { name: "TOAST BOX" })).toBeVisible();
+});
+
 test("another user's sqid in the URL redirects to your own account", async ({ page }) => {
   await devLogin(page, "alice@extract.local");
   await expect(page).toHaveURL(/\/home\/(\w+)/);

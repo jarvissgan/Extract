@@ -58,14 +58,13 @@ const finish = (row) => {
 
 const CARD_TXN = new RegExp(
   `^(\\d{1,2})\\s+(${MONTHS.join("|")})\\s+(.+?)\\s+(\\d{1,3}(?:,\\d{3})*\\.\\d{2})(\\s*CR)?\\s*$`,
-  "i"
+  "i",
 );
 const CARD_SKIP = /^(PREVIOUS BALANCE|SUB-?TOTAL|TOTAL\b|NEW TRANSACTIONS|REF NO)/i;
 const FOREIGN_LINE = /^([A-Z][A-Z. ]{2,}?)\s+(\d{1,3}(?:,\d{3})*\.\d{2})$/;
 
 // trailing "SINGAPORE SG", "SG", "SGP", "(SGP) SG" location noise on card lines
-const cardMerchant = (desc) =>
-  clean(desc.replace(/\s+\(?SGP\)?(\s+SG)?$/i, "").replace(/\s+(SINGAPORE\s+)?SG$/i, ""));
+const cardMerchant = (desc) => clean(desc.replace(/\s+\(?SGP\)?(\s+SG)?$/i, "").replace(/\s+(SINGAPORE\s+)?SG$/i, ""));
 
 function parseCard(lines) {
   const warnings = [];
@@ -123,7 +122,12 @@ function parseCard(lines) {
         row = { name: "Card bill payment", type: "income", kind: "transfer", include: false };
       } else if (credit) {
         const cashback = /CASHBACK|REBATE/i.test(desc);
-        row = { name: cashback ? `Cashback (${cardMerchant(desc)})` : `Refund: ${cardMerchant(desc)}`, type: "income", kind: "refund", include: true };
+        row = {
+          name: cashback ? `Cashback (${cardMerchant(desc)})` : `Refund: ${cardMerchant(desc)}`,
+          type: "income",
+          kind: "refund",
+          include: true,
+        };
       } else if (/\bFEE\b|CHARGE|INTEREST|FINANCE/i.test(desc)) {
         row = { name: cardMerchant(desc), type: "expense", kind: "fee", include: true };
       } else {
@@ -168,7 +172,7 @@ const debitMerchant = (s) =>
     s
       .replace(/\s+\d{2}(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/i, "")
       .replace(/(\s+[A-Z]{2})?\s+SGP?$/i, "")
-      .replace(/\s+SINGAPORE$/i, "")
+      .replace(/\s+SINGAPORE$/i, ""),
   );
 
 function describeAccountTxn(desc, details, type) {
@@ -184,7 +188,8 @@ function describeAccountTxn(desc, details, type) {
   }
   if (/PAYLAH/i.test(joined)) return { name: "PayLah! top-up", kind: "transfer", include: true };
   if (/Bill Payment/i.test(d)) {
-    if (/DBSC|CARD|\b\d{16}\b|-\d{16}/i.test(first)) return { name: "Credit card bill payment", kind: "transfer", include: true };
+    if (/DBSC|CARD|\b\d{16}\b|-\d{16}/i.test(first))
+      return { name: "Credit card bill payment", kind: "transfer", include: true };
     const payee = clean(first.split(":")[0]) || "Bill";
     return { name: `Bill payment ${payee}`, kind: "spend", include: true };
   }
@@ -192,7 +197,8 @@ function describeAccountTxn(desc, details, type) {
     const to = /\bTO:\s*(.+)/i.exec(joined);
     const from = /\bFROM:\s*(.+)/i.exec(joined);
     const who = (m) => clean(m[1].replace(/\s+(PAYNOW TRANSFER|OTHR|OTHER|SG\d+).*$/i, ""));
-    if (type === "income") return { name: from ? `PayNow from ${who(from)}` : "Incoming PayNow", kind: "income", include: true };
+    if (type === "income")
+      return { name: from ? `PayNow from ${who(from)}` : "Incoming PayNow", kind: "income", include: true };
     return { name: to ? `PayNow to ${who(to)}` : "PayNow transfer", kind: "spend", include: true };
   }
   if (/Salary/i.test(d)) return { name: "Salary", kind: "income", include: true };
@@ -203,7 +209,8 @@ function describeAccountTxn(desc, details, type) {
       ? { name: "Incoming transfer", kind: "income", include: true }
       : { name: "Funds transfer", kind: "transfer", include: true };
   }
-  if (/GIRO/i.test(d)) return { name: clean(`GIRO ${first.split(":")[0]}`), kind: type === "income" ? "income" : "spend", include: true };
+  if (/GIRO/i.test(d))
+    return { name: clean(`GIRO ${first.split(":")[0]}`), kind: type === "income" ? "income" : "spend", include: true };
   return { name: clean(d) || "Bank transaction", kind: type === "income" ? "income" : "spend", include: true };
 }
 
@@ -227,7 +234,7 @@ function parseAccount(lines) {
         amount: pending.amount,
         note: "",
         source: account || "DBS account",
-      })
+      }),
     );
     pending = null;
   };
@@ -300,7 +307,7 @@ function parseAccount(lines) {
           .filter((i) => !AMOUNT.test(i.str.trim()))
           .map((i) => i.str)
           .join(" ")
-          .replace(ACCOUNT_TXN, "")
+          .replace(ACCOUNT_TXN, ""),
       );
       pending = { date: `${m[3]}-${m[2]}-${m[1]}`, amount, type, desc, details: [] };
       continue;
@@ -319,4 +326,141 @@ function parseAccount(lines) {
     ? `DBS/POSB account statement, ${monthLabel(statementMonth.y, statementMonth.m)}`
     : "DBS/POSB account statement";
   return { kind: "account", label, rows, warnings };
+}
+
+// ------------------------------------------- digibank transaction history (CSV)
+
+// The CSV digibank downloads from an account's transaction history: a few summary lines
+// ("Account Details For:", balances), then a header row with "Transaction Date",
+// "Statement Code", "Description", "Supplementary Code", "Client Reference",
+// "Debit Amount", "Credit Amount" and others. `table` is the parsed CSV (rows of cells).
+// Returns null when it isn't that format.
+export function parseDbsHistoryCsv(table) {
+  const headerAt = table.slice(0, 30).findIndex((r) => {
+    const h = r.map((c) => c.trim().toLowerCase());
+    return h.includes("transaction date") && h.includes("debit amount") && h.includes("credit amount");
+  });
+  if (headerAt === -1) return null;
+
+  const header = table[headerAt].map((c) => c.trim().toLowerCase());
+  const col = (name) => header.indexOf(name);
+  const at = {
+    date: col("transaction date"),
+    code: col("statement code"),
+    desc: col("description"),
+    supp: col("supplementary code"),
+    suppDesc: col("supplementary code description"),
+    client: col("client reference"),
+    status: col("status"),
+    debit: col("debit amount"),
+    credit: col("credit amount"),
+  };
+
+  const summary = Object.fromEntries(
+    table
+      .slice(0, headerAt)
+      .filter((r) => r[0])
+      .map((r) => [r[0].trim().replace(/:$/, "").toLowerCase(), (r[1] ?? "").trim()]),
+  );
+  const accountName = summary["account details for"] || "";
+  const accountNo = /([\d-]{6,})\s*$/.exec(accountName);
+  const source = accountNo
+    ? `${clean(accountName.replace(accountNo[0], "")) || "Account"} ••${accountNo[1].replace(/\D/g, "").slice(-4)}`
+    : accountName || "DBS/POSB account";
+
+  const rows = [];
+  const warnings = [];
+  table.slice(headerAt + 1).forEach((r, i) => {
+    const get = (k) => (at[k] === -1 ? "" : clean(r[at[k]] ?? ""));
+    if (!get("date") && !get("debit") && !get("credit")) return; // blank or footer line
+    const line = headerAt + i + 2;
+
+    const m = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/.exec(get("date"));
+    const month = m ? MONTHS.indexOf(m[2].toUpperCase()) : -1;
+    if (!m || month === -1) return warnings.push(`Line ${line}: can't read the date "${get("date")}".`);
+    if (/pending|fail|reject|cancel/i.test(get("status"))) return; // not final yet
+
+    const debit = get("debit") ? toAmount(get("debit")) : 0;
+    const credit = get("credit") ? toAmount(get("credit")) : 0;
+    if (!Number.isFinite(debit) || !Number.isFinite(credit) || (!debit && !credit)) {
+      return warnings.push(`Line ${line}: can't read the amount.`);
+    }
+    const type = credit ? "income" : "expense";
+
+    rows.push(
+      finish({
+        ...describeHistoryTxn(get("code"), get("suppDesc"), get("supp"), get("desc"), get("client"), type),
+        date: isoDate(Number(m[3]), month, Number(m[1])),
+        amount: credit || debit,
+        type,
+        note: "",
+        source,
+      }),
+    );
+  });
+
+  if (!rows.length) warnings.push("No transactions found in this file.");
+  const dates = rows.map((r) => r.date).sort();
+  const span = dates.length
+    ? [dates[0], dates[dates.length - 1]].map((d) => monthLabel(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1))
+    : [];
+  const label = `DBS/POSB transaction history${span.length ? `, ${span[0] === span[1] ? span[0] : `${span[0]} – ${span[1]}`}` : ""}`;
+  return { kind: "history", label, rows, warnings };
+}
+
+// code: "POS", "INT", "ATM", "ICT", ...; supp: the short description, e.g.
+// "UMC GRAB*GRABFOOD  SI SGP 05NOV", "ICT PayNow Transfer 1234567", "TOP-UP TO PAYLAH! :"
+function describeHistoryTxn(code, suppDesc, supp, desc, client, type) {
+  const all = `${supp} ${desc} ${client}`;
+  const income = type === "income";
+
+  if (code === "POS" || /point-of-sale/i.test(suppDesc)) {
+    const merchant =
+      debitMerchant(
+        supp
+          .replace(/^[A-Z]{3}\s+(?=\S)/, "") // card network code, e.g. UMC / MST
+          .replace(/^NETS\s+\d+,\s*/i, "")
+          .split(/\s{2,}/)[0],
+      ).replace(/\s+\d{6,}\s+[A-Z]{3}$/, "") || "Debit card purchase"; // foreign: "... 8665712775 IRL"
+    if (/CASHBACK|REBATE/i.test(supp)) return { name: `Cashback (${merchant})`, kind: "refund", include: true };
+    if (income) return { name: `Refund: ${merchant}`, kind: "refund", include: true };
+    return { name: merchant, kind: "spend", include: true };
+  }
+  if (code === "INT" || /interest/i.test(suppDesc)) return { name: "Interest earned", kind: "income", include: true };
+  if (code === "ATM" || /^ATM$/i.test(suppDesc)) {
+    return income
+      ? { name: "ATM deposit", kind: "income", include: true }
+      : { name: "ATM cash withdrawal", kind: "cash", include: true };
+  }
+  if (/PAYLAH/i.test(all)) {
+    // money moved back from PayLah! isn't income
+    return income
+      ? { name: "From PayLah!", kind: "transfer", include: false }
+      : { name: "PayLah! top-up", kind: "transfer", include: true };
+  }
+  if (/PAYNOW|FAST/i.test(all)) {
+    const party = /\b(?:TO|FROM):\s*(.+)/i.exec(client) || /\b(?:TO|FROM):\s*(.+)/i.exec(desc);
+    const who = party
+      ? clean(party[1].replace(/\s+(PAYNOW TRANSFER|OTHR|OTHER|SG\d+)\b.*$/i, "").replace(/\s+-$/, ""))
+      : "";
+    if (income) return { name: who ? `PayNow from ${who}` : "Incoming PayNow", kind: "income", include: true };
+    return { name: who ? `PayNow to ${who}` : "PayNow transfer", kind: "spend", include: true };
+  }
+  if (/^BILL\b/i.test(supp)) {
+    if (/DBSC|CARD|\d{16}/i.test(supp)) return { name: "Credit card bill payment", kind: "transfer", include: true };
+    const payee = clean(supp.replace(/^BILL\s+/i, "").split(/[-:]/)[0]) || "Bill";
+    return { name: `Bill payment ${payee}`, kind: "spend", include: true };
+  }
+  if (/GIRO/i.test(suppDesc) || /^(PAY|IBG|GIRO)\b/i.test(supp)) {
+    const who = clean(supp.replace(/^(PAY|IBG|GIRO)\s+/i, "")) || "GIRO";
+    if (income && /\bSAL(ARY)?\b/i.test(all)) return { name: "Salary", kind: "income", include: true };
+    return { name: income ? `GIRO from ${who}` : `GIRO ${who}`, kind: income ? "income" : "spend", include: true };
+  }
+  if (/\b\d{3}-\d{5,6}-\d\b/.test(all) || /FUNDS TRANSFER|\bTRF\b|REMITTANCE/i.test(all)) {
+    return income
+      ? { name: "Incoming transfer", kind: "income", include: true }
+      : { name: "Funds transfer", kind: "transfer", include: true };
+  }
+  const name = clean(supp.replace(/\s+[A-Z0-9]*\d{6,}[A-Z0-9]*.*$/, "")) || clean(desc) || "Bank transaction";
+  return { name, kind: income ? "income" : "spend", include: true };
 }

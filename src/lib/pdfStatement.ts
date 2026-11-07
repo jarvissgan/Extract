@@ -22,7 +22,7 @@ export interface StatementRow {
 }
 
 export interface StatementResult {
-  kind: "card" | "account" | null;
+  kind: "card" | "account" | "history" | null;
   label: string;
   rows: StatementRow[];
   warnings: string[];

@@ -4,6 +4,7 @@ import { findCategory } from "./transactions";
 import type { CategoryOption, CategoryRule, Transaction, TransactionType } from "./types";
 import { categoryFromRules } from "../../shared/schemas.js";
 import { categoryFromMerchant } from "../../shared/merchantCategories.js";
+import { parseDbsHistoryCsv } from "../../shared/statementParser.js";
 import type { StatementResult, StatementRow } from "./pdfStatement";
 
 dayjs.extend(customParseFormat);
@@ -80,9 +81,13 @@ export const csvToStatement = (
   categories: CategoryOption[],
   rules: CategoryRule[] = [],
 ): StatementResult => {
-  const [header, ...lines] = parseCsv(text);
-  if (!header) return { kind: null, label: fileName, rows: [], warnings: ["The file is empty."] };
+  const table = parseCsv(text.replace(/^\uFEFF/, ""));
+  if (!table.length) return { kind: null, label: fileName, rows: [], warnings: ["The file is empty."] };
+  // digibank's transaction history download
+  const history = parseDbsHistoryCsv(table);
+  if (history) return history as StatementResult;
 
+  const [header, ...lines] = table;
   const col = (name: string) => header.findIndex((h) => h.trim().toLowerCase() === name);
   const idx = {
     date: col("date"),
@@ -94,7 +99,14 @@ export const csvToStatement = (
   };
   const missing = (["date", "name", "amount"] as const).filter((k) => idx[k] === -1);
   if (missing.length) {
-    return { kind: null, label: fileName, rows: [], warnings: [`Missing column(s): ${missing.join(", ")}.`] };
+    return {
+      kind: null,
+      label: fileName,
+      rows: [],
+      warnings: [
+        `Missing column(s): ${missing.join(", ")}. Use a DBS/POSB transaction history CSV, or a file with date, name and amount columns.`,
+      ],
+    };
   }
 
   const rows: StatementRow[] = [];
