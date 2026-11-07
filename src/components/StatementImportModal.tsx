@@ -34,6 +34,8 @@ interface PreviewRow extends StatementRow {
 interface Props {
   opened: boolean;
   onClose: () => void;
+  // called with the dates (ISO) of the imported transactions
+  onImported?: (dates: string[]) => void;
 }
 
 const KIND_BADGE: Partial<Record<StatementRow["kind"], { label: string; color: string }>> = {
@@ -43,7 +45,7 @@ const KIND_BADGE: Partial<Record<StatementRow["kind"], { label: string; color: s
   fee: { label: "Fee", color: "orange" },
 };
 
-const StatementImportModal = ({ opened, onClose }: Props) => {
+const StatementImportModal = ({ opened, onClose, onImported }: Props) => {
   const isMobile = useIsMobile();
   const { sqid, categories, rules, formatMoney, notifyTransactionsChanged } = useCurrentUser();
   const [picked, setPicked] = useState<File[]>([]);
@@ -193,6 +195,7 @@ const StatementImportModal = ({ opened, onClose }: Props) => {
       }
       notifications.show({ message: `Imported ${imported} transactions.`, color: "green" });
       notifyTransactionsChanged();
+      onImported?.(transactions.map((t) => t.transaction_date));
       close();
     } catch {
       setProblem("The import failed; nothing was saved. Try again later.");

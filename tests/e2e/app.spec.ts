@@ -362,7 +362,8 @@ test("DBS statement PDFs import with card payment credits unticked, and re-impor
   await expect(dialog).toBeHidden();
   await expect(page.getByText("Imported 20 transactions.")).toBeVisible();
 
-  await page.goto(page.url().split("?")[0] + "?month=2026-10");
+  // the list jumps to the imported month and shows the new rows without a reload
+  await expect(page).toHaveURL(/month=2026-10/);
   await expect(page.getByRole("link", { name: "Salary" })).toBeVisible();
   await expect(page.getByRole("link", { name: "PayLah! top-up" })).toBeVisible();
 
