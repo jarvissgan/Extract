@@ -15,6 +15,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { itemsToLines } from "../shared/pdfLines.js";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 
@@ -63,32 +64,6 @@ export const redactLine = (line) =>
     })
     .replace(/\d/g, "9");
 
-// Rebuilds visual lines from the PDF's positioned text, keeping column gaps roughly intact.
-const pageToLines = (items) => {
-  const rows = [];
-  for (const it of items) {
-    if (!it.str || !it.str.trim()) continue;
-    const [, , , , x, y] = it.transform;
-    const row = rows.find((r) => Math.abs(r.y - y) < 2.5);
-    if (row) row.items.push({ x, s: it.str, w: it.width });
-    else rows.push({ y, items: [{ x, s: it.str, w: it.width }] });
-  }
-  rows.sort((a, b) => b.y - a.y);
-  return rows.map(({ items: parts }) => {
-    parts.sort((a, b) => a.x - b.x);
-    let line = "";
-    let end = parts[0].x;
-    for (const p of parts) {
-      const charWidth = p.w && p.s.length ? p.w / p.s.length : 5;
-      const gap = Math.round((p.x - end) / Math.max(charWidth, 1));
-      line += line ? " ".repeat(Math.max(1, Math.min(gap, 40))) : "";
-      line += p.s;
-      end = p.x + (p.w || p.s.length * charWidth);
-    }
-    return line.trimEnd();
-  });
-};
-
 async function main() {
   const args = process.argv.slice(2);
   const file = args.find((a) => !a.startsWith("--"));
@@ -127,7 +102,7 @@ async function main() {
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
     const { items } = await page.getTextContent();
-    const lines = pageToLines(items);
+    const lines = itemsToLines(items).map((l) => l.text);
     textLines += lines.length;
     out.push(`===== page ${n} =====`, ...lines.map(redactLine), "");
   }

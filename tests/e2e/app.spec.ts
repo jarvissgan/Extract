@@ -91,10 +91,11 @@ test("transactions can be searched, exported and imported", async ({ page }) => 
     `${today},Book,12,,`,
   ].join("\n");
 
-  await page.getByRole("button", { name: "Import CSV" }).click();
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await page.getByRole("menuitem", { name: "CSV file" }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await expect(page.getByText("3 transactions ready to import.")).toBeVisible();
-  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Import", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(3);
 
   await page.getByLabel("Search transactions").fill("train");
@@ -115,11 +116,12 @@ test("bad CSV rows are reported and nothing is imported", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByText("Transactions", { exact: true }).click();
 
-  await page.getByRole("button", { name: "Import CSV" }).click();
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await page.getByRole("menuitem", { name: "CSV file" }).click();
   const csv = "date,name,amount\nnot a date,Coffee,4\n2026-01-01,Tea,abc";
   await page.locator('input[type="file"]').setInputFiles({ name: "bad.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await expect(page.getByText(/Line 2: can't read the date/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Import", exact: true })).toBeDisabled();
+  await expect(page.getByRole("dialog").getByRole("button", { name: "Import", exact: true })).toBeDisabled();
 });
 
 test("another user's sqid in the URL redirects to your own account", async ({ page }) => {
@@ -328,4 +330,44 @@ test("A mode shows Pooh and uses no gradients", async ({ page }) => {
   await page.getByText("Savings", { exact: true }).click();
   await expect(page.getByText("Start your first savings goal")).toBeVisible();
   await expect(page.getByRole("img", { name: "Winnie-the-Pooh" })).toBeVisible();
+});
+
+test("DBS statement PDFs import with transfers unticked, and re-imports are caught as duplicates", async ({ page }) => {
+  await signUp(page, "statement");
+  await page.getByText("Transactions", { exact: true }).click();
+  // the fake statements are from Sep–Oct 2026
+  const fixtures = ["tests/fixtures/dbs-card.pdf", "tests/fixtures/dbs-account.pdf"];
+
+  const openImporter = async () => {
+    await page.getByRole("button", { name: "Import", exact: true }).click();
+    await page.getByRole("menuitem", { name: /DBS\/POSB statement/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Import DBS/POSB statements" });
+    await dialog.locator('input[type="file"]').setInputFiles(fixtures);
+    await expect(dialog.getByTestId("statement-row")).toHaveCount(22);
+    return dialog;
+  };
+
+  let dialog = await openImporter();
+  await expect(dialog.getByText("is read on this device")).toHaveCount(0); // intro hidden once loaded
+  // card bill payments (2 + 1 from the account), PayLah! top-up start unticked
+  await expect(dialog.getByRole("checkbox", { name: "Import Card bill payment" }).first()).not.toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "Import Credit card bill payment" })).not.toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "Import PayLah! top-up" })).not.toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "Import Salary" })).toBeChecked();
+  await expect(dialog.getByText("18 of 22 selected")).toBeVisible();
+  await expect(dialog.getByRole("combobox", { name: "Category for NTUC FAIRPRICE TAMPINES" })).toHaveValue("food");
+
+  await dialog.getByRole("button", { name: "Import 18 transactions" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("Imported 18 transactions.")).toBeVisible();
+
+  await page.goto(page.url().split("?")[0] + "?month=2026-10");
+  await expect(page.getByRole("link", { name: "Salary" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "PayLah! top-up" })).toHaveCount(0);
+
+  // importing the same statements again: everything already there starts unticked
+  dialog = await openImporter();
+  await expect(dialog.getByText("Already in app")).toHaveCount(18);
+  await expect(dialog.getByText("0 of 22 selected")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
 });
