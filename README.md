@@ -12,7 +12,7 @@ Personal expense tracker built with React + Vite, Mantine UI, Auth0, Express and
 - Light, Dark and "A mode" (butter yellow and pink, with classic Pooh and his hunny pot) appearances, switchable from the header or Settings
 - Fast entry: a quick-add bar ("coffee 4.50", "+3200 salary", "lunch 12 yesterday #food"), suggestions from your history,
   "Add another", undo, and shortcuts (N = add, / = quick add); a floating + button on phones
-- Import DBS/POSB credit card and account PDF statements: read on your device (never uploaded), reviewed before saving,
+- Import DBS/POSB credit card and account PDF statements, digibank transaction history (CSV or PDF) and any CSV, several files at once: read on your device (never uploaded), reviewed before saving,
   with transfers and card payments left out and duplicates detected
 - Download all your data as JSON, or delete your account
 

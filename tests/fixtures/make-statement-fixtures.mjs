@@ -111,13 +111,33 @@ ${tx("31/10/2026", "", "", "", "9.99")}
 ${footer(3)}
 </div></body></html>`;
 
+// ---------- transaction history (digibank page saved as PDF) ----------
+const hrow = (date, desc, debit, credit) =>
+  `<tr><td>${date}</td><td>${desc}</td><td>Settled</td><td>SGD</td><td class="r">${debit}</td><td class="r">${credit}</td></tr>`;
+const history = `<html><head><style>${css}</style></head><body>
+<div>Account Details For: DBS Multiplier Account 120-456789-0</div>
+<div>Statement as at: 07 Nov 2026</div>
+<table style="margin-top:8px"><tr><th align=left>Transaction Date</th><th align=left>Description</th><th align=left>Status</th><th align=left>Currency</th><th class="r">Debit Amount</th><th class="r">Credit Amount</th></tr>
+${hrow("06 Nov 2026", "UMC TOAST BOX SI SGP 05NOV<br>Point-of-Sale Transaction", "6.80", "")}
+${hrow("05 Nov 2026", "TOP-UP TO PAYLAH! : 91234567", "20.00", "")}
+${hrow("05 Nov 2026", "ICT PayNow Transfer 1234567<br>To: MARY LIM", "45.00", "")}
+${hrow("04 Nov 2026", "ICT Incoming PayNow Ref 7654321<br>From: JOHN TAN", "", "50.00")}
+${hrow("03 Nov 2026", "BILL DBSC-4119110022334455 : I-BANK", "1,023.40", "")}
+${hrow("01 Nov 2026", "Interest Earned", "", "0.41")}
+</table>
+<div style="margin-top:20px">Page 1 of 1</div>
+</body></html>`;
+
+const all = [["dbs-card", card], ["dbs-account", acct], ["dbs-history", history]];
+// node make-statement-fixtures.mjs dbs-history  -> only that one
+const only = process.argv.slice(2);
 const launch = process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {};
 const browser = await chromium.launch(launch);
-for (const [name, html] of [["dbs-card", card], ["dbs-account", acct]]) {
+for (const [name, html] of all.filter(([n]) => !only.length || only.includes(n))) {
   const page = await browser.newPage();
   await page.setContent(html);
   await page.pdf({ path: new URL(`./${name}.pdf`, import.meta.url).pathname, format: "A4" });
   await page.close();
 }
 await browser.close();
-console.log("wrote tests/fixtures/dbs-card.pdf and dbs-account.pdf");
+console.log("wrote the statement fixtures in tests/fixtures");

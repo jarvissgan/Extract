@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 // Signs in through the offline dev login page.
@@ -92,9 +93,8 @@ test("transactions can be searched, exported and imported", async ({ page }) => 
   ].join("\n");
 
   await page.getByRole("button", { name: "Import", exact: true }).click();
-  await page.getByRole("menuitem", { name: "CSV file" }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
-  const dialog = page.getByRole("dialog", { name: "Import CSV files" });
+  const dialog = page.getByRole("dialog", { name: "Import transactions" });
   await expect(dialog.getByTestId("statement-row")).toHaveCount(3);
   // blank category: guessed from the name, like statements
   await expect(dialog.getByRole("combobox", { name: "Category for Book" })).toHaveValue("other");
@@ -103,7 +103,6 @@ test("transactions can be searched, exported and imported", async ({ page }) => 
 
   // the same file again: everything is caught as a duplicate
   await page.getByRole("button", { name: "Import", exact: true }).click();
-  await page.getByRole("menuitem", { name: "CSV file" }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await expect(dialog.getByText("Already in app")).toHaveCount(3);
   await expect(dialog.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
@@ -128,7 +127,6 @@ test("bad CSV rows are reported and good ones can still be imported", async ({ p
   await page.getByText("Transactions", { exact: true }).click();
 
   await page.getByRole("button", { name: "Import", exact: true }).click();
-  await page.getByRole("menuitem", { name: "CSV file" }).click();
   const csv = "date,name,amount\nnot a date,Coffee,4\n2026-01-01,Tea,abc\n2026-01-02,Juice,-3.5";
   await page.locator('input[type="file"]').setInputFiles({ name: "bad.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   const dialog = page.getByRole("dialog");
@@ -139,7 +137,7 @@ test("bad CSV rows are reported and good ones can still be imported", async ({ p
   await expect(dialog.getByRole("button", { name: "Import 1 transaction" })).toBeEnabled();
 });
 
-test("a digibank transaction history CSV is read with its own columns", async ({ page }) => {
+test("a digibank transaction history CSV is read with its own columns, in a batch with a PDF", async ({ page }) => {
   await devLogin(page, uniqueEmail("history"));
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByText("Transactions", { exact: true }).click();
@@ -151,10 +149,16 @@ test("a digibank transaction history CSV is read with its own columns", async ({
     '"05 Oct 2026","","TOP","TOP-UP TO PAYLAH! : 91234567","TOP TOP-UP TO PAYLAH! :","Advice","","","Settled","SGD",20,""',
   ].join("\n");
   await page.getByRole("button", { name: "Import", exact: true }).click();
-  await page.getByRole("menuitem", { name: "CSV file" }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: "transaction_history.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  // a batch: the history CSV and a card statement PDF together
+  await page.locator('input[type="file"]').setInputFiles([
+    { name: "transaction_history.csv", mimeType: "text/csv", buffer: Buffer.from(csv) },
+    { name: "dbs-card.pdf", mimeType: "application/pdf", buffer: readFileSync("tests/fixtures/dbs-card.pdf") },
+  ]);
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByTestId("statement-row")).toHaveCount(2);
+  await expect(dialog.getByTestId("statement-row")).toHaveCount(2 + 12);
+  await dialog.getByRole("button", { name: "None" }).click();
+  await dialog.getByRole("checkbox", { name: "Import TOAST BOX" }).check();
+  await dialog.getByRole("checkbox", { name: "Import PayLah! top-up" }).check();
   await expect(dialog.getByRole("combobox", { name: "Category for TOAST BOX" })).toHaveValue("food");
   await expect(dialog.getByRole("checkbox", { name: "Import PayLah! top-up" })).toBeChecked();
   await dialog.getByRole("button", { name: "Import 2 transactions" }).click();
@@ -378,8 +382,7 @@ test("DBS statement PDFs import with card payment credits unticked, and re-impor
 
   const openImporter = async () => {
     await page.getByRole("button", { name: "Import", exact: true }).click();
-    await page.getByRole("menuitem", { name: /DBS\/POSB statement/ }).click();
-    const dialog = page.getByRole("dialog", { name: "Import DBS/POSB statements" });
+    const dialog = page.getByRole("dialog", { name: "Import transactions" });
     await dialog.locator('input[type="file"]').setInputFiles(fixtures);
     await expect(dialog.getByTestId("statement-row")).toHaveCount(22);
     return dialog;
