@@ -177,6 +177,7 @@ const StatementImportModal = ({ opened, onClose, onImported }: Props) => {
       transaction_details: {
         category: r.category,
         transaction_note: [r.note, r.source].filter(Boolean).join(" · ").slice(0, 2000),
+        date_only: true,
       },
     }));
     const checked = importSchema.safeParse({ transactions: transactions.slice(0, MAX_IMPORT_ROWS) });

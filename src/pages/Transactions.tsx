@@ -20,7 +20,17 @@ import { BarChart } from "@mantine/charts";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBulb, IconCalendarStats, IconDownload, IconReceipt2, IconSearch, IconTrash, IconUpload, IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
+import {
+  IconBulb,
+  IconCalendarStats,
+  IconDownload,
+  IconReceipt2,
+  IconSearch,
+  IconTrash,
+  IconUpload,
+  IconFileSpreadsheet,
+  IconFileTypePdf,
+} from "@tabler/icons-react";
 import api from "../lib/api";
 import dayjs from "dayjs";
 import ImportModal from "../components/ImportModal";
@@ -57,7 +67,7 @@ const Transactions = () => {
       (t) =>
         (!needle || t.name.toLowerCase().includes(needle) || t.note.toLowerCase().includes(needle)) &&
         (!selectedCategories.length || selectedCategories.includes(t.category)) &&
-        (typeFilter === "all" || t.type === typeFilter)
+        (typeFilter === "all" || t.type === typeFilter),
     );
   }, [transactions, search, selectedCategories, typeFilter]);
 
@@ -65,9 +75,15 @@ const Transactions = () => {
   const visibleSelected = new Set(filtered.filter((t) => selected.has(t.uuid)).map((t) => t.uuid));
 
   const isFiltered = filtered.length !== transactions.length;
+  const searchOrCategory = !!search.trim() || selectedCategories.length > 0;
   const filteredExpenses = expensesOf(filtered);
-  const total = sumAmounts(filteredExpenses);
-  const income = sumAmounts(incomeOf(filtered));
+  const filteredIncome = incomeOf(filtered);
+  const income = sumAmounts(filteredIncome);
+  // the Income filter switches the cards from spending to income
+  const showIncome = typeFilter === "income";
+  const focus = showIncome ? filteredIncome : filteredExpenses;
+  const total = sumAmounts(focus);
+  const measure = showIncome ? "income" : "spending";
 
   const runBulk = async (body: { action: "delete" } | { action: "categorize"; category: string }) => {
     try {
@@ -93,23 +109,31 @@ const Transactions = () => {
       onConfirm: () => runBulk({ action: "delete" }),
     });
 
-  const daily = Array.from({ length: month.daysInMonth() }, (_, i) => ({ day: String(i + 1), Spent: 0 }));
-  filteredExpenses.forEach((t) => {
+  const seriesName = showIncome ? "Received" : "Spent";
+  const totals = Array<number>(month.daysInMonth()).fill(0);
+  focus.forEach((t) => {
     const d = dayjs(t.createdAt);
-    if (d.isSame(month, "month")) daily[d.date() - 1].Spent += t.amount;
+    if (d.isSame(month, "month")) totals[d.date() - 1] += t.amount;
   });
+  const daily = totals.map((value, i) => ({ day: String(i + 1), [seriesName]: value }));
+  const compactMoney = (v: number) =>
+    v >= 1000
+      ? `${formatMoney(v / 1000)
+          .replace(/\.00$/, "")
+          .replace(/(\.\d)0$/, "$1")}k`
+      : formatMoney(v).replace(/\.00$/, "");
 
-  const largest = filteredExpenses.reduce<(typeof filtered)[number] | null>(
+  const largest = focus.reduce<(typeof filtered)[number] | null>(
     (max, t) => (!max || t.amount > max.amount ? t : max),
-    null
+    null,
   );
   const topCategory = categories
     .map((c) => ({
       label: c.label,
-      value: sumAmounts(filteredExpenses.filter((t) => t.category === c.value)),
+      value: sumAmounts(focus.filter((t) => t.category === c.value)),
     }))
     .sort((a, b) => b.value - a.value)[0];
-  const average = filteredExpenses.length ? total / filteredExpenses.length : 0;
+  const average = focus.length ? total / focus.length : 0;
 
   const exportCsv = () =>
     downloadFile(`transactions-${month.format("YYYY-MM")}.csv`, transactionsToCsv(filtered, categories));
@@ -128,52 +152,64 @@ const Transactions = () => {
       ) : (
         <>
           <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">
-            <StatCard label={`${isFiltered ? "Filtered spending" : "Spending"} for ${monthName}`} icon={<IconReceipt2 size={20} />}>
-              <Title order={2}>{formatMoney(total)}</Title>
+            <StatCard
+              label={`${searchOrCategory ? `Filtered ${measure}` : showIncome ? "Income" : "Spending"} for ${monthName}`}
+              icon={<IconReceipt2 size={20} />}
+              color={showIncome ? "teal" : undefined}
+            >
+              <Title order={2} c={showIncome ? "teal" : undefined}>
+                {formatMoney(total)}
+              </Title>
               <Text size="sm" c="dimmed">
-                {filteredExpenses.length} expense{filteredExpenses.length === 1 ? "" : "s"}
-                {income > 0 && (
+                {focus.length} {showIncome ? "payment" : "expense"}
+                {focus.length === 1 ? "" : "s"}
+                {!showIncome && income > 0 && (
                   <Text span c="teal" size="sm">
-                    {" "}· +{formatMoney(income)} income
+                    {" "}
+                    · +{formatMoney(income)} income
                   </Text>
                 )}
               </Text>
             </StatCard>
 
             <Box visibleFrom="sm">
-            <StatCard label="Daily spending" icon={<IconCalendarStats size={20} />} color="blue">
-              <BarChart
-                h={90}
-                data={daily}
-                dataKey="day"
-                series={[{ name: "Spent", color: "blue.6" }]}
-                withXAxis={false}
-                withYAxis={false}
-                gridAxis="none"
-                valueFormatter={formatMoney}
-              />
-            </StatCard>
-
+              <StatCard
+                label={`Daily ${measure}`}
+                icon={<IconCalendarStats size={20} />}
+                color={showIncome ? "teal" : "blue"}
+              >
+                <BarChart
+                  h={120}
+                  data={daily}
+                  dataKey="day"
+                  series={[{ name: seriesName, color: showIncome ? "teal.6" : "blue.6" }]}
+                  gridAxis="x"
+                  tickLine="none"
+                  yAxisProps={{ width: 44, tickCount: 3, tickFormatter: compactMoney }}
+                  xAxisProps={{ interval: "preserveStartEnd", minTickGap: 8 }}
+                  valueFormatter={formatMoney}
+                />
+              </StatCard>
             </Box>
             {/* phones: keep the list near the top; trends live on Reports */}
             <Box visibleFrom="sm">
-            <StatCard label="Insights" icon={<IconBulb size={20} />} color="yellow">
-              {filteredExpenses.length ? (
-                <Stack gap={4}>
-                  <Text size="sm">
-                    Largest: <b>{largest?.name}</b> ({formatMoney(largest?.amount ?? 0)})
-                  </Text>
-                  <Text size="sm">
-                    Top category: <b>{topCategory.label}</b> ({formatMoney(topCategory.value)})
-                  </Text>
-                  <Text size="sm">
-                    Average per transaction: <b>{formatMoney(average)}</b>
-                  </Text>
-                </Stack>
-              ) : (
-                <Text c="dimmed">No insights yet for this month.</Text>
-              )}
-            </StatCard>
+              <StatCard label="Insights" icon={<IconBulb size={20} />} color="yellow">
+                {focus.length ? (
+                  <Stack gap={4}>
+                    <Text size="sm">
+                      Largest: <b>{largest?.name}</b> ({formatMoney(largest?.amount ?? 0)})
+                    </Text>
+                    <Text size="sm">
+                      Top category: <b>{topCategory.label}</b> ({formatMoney(topCategory.value)})
+                    </Text>
+                    <Text size="sm">
+                      Average per transaction: <b>{formatMoney(average)}</b>
+                    </Text>
+                  </Stack>
+                ) : (
+                  <Text c="dimmed">No insights yet for this month.</Text>
+                )}
+              </StatCard>
             </Box>
           </SimpleGrid>
 

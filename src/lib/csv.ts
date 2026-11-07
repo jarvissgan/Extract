@@ -12,7 +12,7 @@ export const transactionsToCsv = (transactions: Transaction[], categories: Categ
   const header = ["date", "name", "amount", "type", "category", "note"];
   const lines = transactions.map((t) =>
     [
-      dayjs(t.createdAt).format("YYYY-MM-DD HH:mm"),
+      dayjs(t.createdAt).format(t.dateOnly ? "YYYY-MM-DD" : "YYYY-MM-DD HH:mm"),
       t.name,
       t.amount.toFixed(2),
       t.type,
@@ -140,7 +140,11 @@ export const csvToImportRows = (
       transaction_name: get("name"),
       transaction_amount: get("amount").replace(/[^0-9.,-]/g, ""),
       transaction_date: parsedDate.toISOString(),
-      transaction_details: { category: category.value, transaction_note: get("note") },
+      transaction_details: {
+        category: category.value,
+        transaction_note: get("note"),
+        ...(get("date").includes(":") ? {} : { date_only: true }),
+      },
     });
   });
 

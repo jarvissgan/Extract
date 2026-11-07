@@ -13,6 +13,11 @@ export const toTransaction = (row: TransactionRow): Transaction => {
     createdAt: row.created_timestamp,
     updatedAt: row.updated_timestamp,
     recurring: !!row.recurring_uuid,
+    // statements imported before date_only existed were saved at exactly 12:00 local time
+    dateOnly:
+      !!details.date_only ||
+      !!row.recurring_uuid ||
+      dayjs(row.created_timestamp).format("HH:mm:ss.SSS") === "12:00:00.000",
   };
 };
 
@@ -44,8 +49,11 @@ export const currencySymbol = (currency: string) => {
   }
 };
 
-export const formatDateTime = (value: string | null) =>
-  value ? dayjs(value).format("D MMM YYYY, h:mm A") : "—";
+export const formatDateTime = (value: string | null) => (value ? dayjs(value).format("D MMM YYYY, h:mm A") : "—");
+
+// a transaction's date, with the time only when it's known
+export const formatWhen = (t: { createdAt: string; dateOnly?: boolean }, withYear = true) =>
+  dayjs(t.createdAt).format(`D MMM${withYear ? " YYYY" : ""}${t.dateOnly ? "" : ", h:mm A"}`);
 
 export const formatDate = (value: string | null) => (value ? dayjs(value).format("D MMM YYYY") : "—");
 

@@ -2,12 +2,11 @@ import { useMemo, useState } from "react";
 import { Anchor, Badge, Box, Card, Checkbox, ColorSwatch, Divider, Group, NativeSelect, Stack, Table, Text, ThemeIcon, Tooltip, UnstyledButton, useMantineTheme } from "@mantine/core";
 import { IconChevronDown, IconChevronUp, IconReceipt, IconRepeat, IconSelector } from "@tabler/icons-react";
 import { Link, useNavigate } from "react-router";
-import { findCategory, formatDateTime } from "../lib/transactions";
+import { findCategory, formatWhen } from "../lib/transactions";
 import type { Transaction } from "../lib/types";
 import { useCurrentUser } from "../context/UserContext";
 import { useAppearance } from "../theme/Appearance";
 import { useIsMobile } from "../hooks/useIsMobile";
-import dayjs from "dayjs";
 import { HoneyPot } from "./Pooh";
 
 type SortKey = "name" | "category" | "amount" | "date";
@@ -177,7 +176,7 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
                     <Group gap={6} wrap="nowrap">
                       <ColorSwatch color={swatch(category.color)} size={8} withShadow={false} />
                       <Text size="xs" c="dimmed" truncate>
-                        {category.label} · {dayjs(t.createdAt).format("D MMM, h:mm A")}
+                        {category.label} · {formatWhen(t, false)}
                       </Text>
                     </Group>
                   </div>
@@ -258,7 +257,7 @@ const TransactionTable = ({ transactions, emptyText, selected, onSelectedChange 
                   {t.type === "income" ? "+" : ""}
                   {formatMoney(t.amount)}
                 </Table.Td>
-                <Table.Td>{formatDateTime(t.createdAt)}</Table.Td>
+                <Table.Td>{formatWhen(t)}</Table.Td>
               </Table.Tr>
             );
           })}
