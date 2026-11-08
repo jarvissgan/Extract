@@ -19,20 +19,30 @@ load_env() {
   set +a
 }
 
+# The app image to run: one built by the CD pipeline (recorded in deploy/.image), or the
+# one built on this server.
+current_image() { cat "$DEPLOY_DIR/.image" 2>/dev/null || echo "extract-app:latest"; }
+
 compose() {
-  docker compose --env-file "$ENV_FILE" -f "$DEPLOY_DIR/docker-compose.yml" "$@"
+  APP_IMAGE="$(current_image)" docker compose --env-file "$ENV_FILE" -f "$DEPLOY_DIR/docker-compose.yml" "$@"
 }
 
-# Waits until the app container reports healthy (migrations done, database reachable).
-wait_healthy() {
+# True once the app container reports healthy (migrations done, database reachable),
+# false after about 3 minutes.
+healthy_within() {
   local status=""
   for _ in $(seq 1 90); do
     status="$(docker inspect -f '{{.State.Health.Status}}' extract-app 2>/dev/null || true)"
     [ "$status" = "healthy" ] && return 0
     sleep 2
   done
+  return 1
+}
+
+wait_healthy() {
+  healthy_within && return 0
   docker logs --tail 50 extract-app || true
-  die "The app didn't become healthy (last status: ${status:-unknown}). Logs are above."
+  die "The app didn't become healthy. Logs are above."
 }
 
 confirm() {

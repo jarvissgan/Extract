@@ -34,3 +34,6 @@ playwright-report/
 
 # production secrets (server only)
 deploy/.env
+# which app image is running (set by deploy.sh)
+deploy/.image
+deploy/.previous-image

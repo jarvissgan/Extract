@@ -101,7 +101,8 @@ Missing columns and tables are added automatically when the app restarts. Existi
 
 | Task | Command (on the server, in `/opt/extract`) |
 | --- | --- |
-| Update to the latest `master` | `sudo ./deploy/deploy.sh` |
+| Update to the latest `master` (building here) | `sudo ./deploy/deploy.sh` |
+| Go back to the previous version | `sudo ./deploy/deploy.sh --rollback` |
 | Back up now | `sudo ./deploy/backup.sh` |
 | List backups | `sudo ./deploy/backup.sh --list` |
 | Restore the latest backup | `sudo ./deploy/restore.sh` |
@@ -113,6 +114,43 @@ Missing columns and tables are added automatically when the app restarts. Existi
 `deploy.sh` backs up, pulls `master`, rebuilds and restarts, with about a minute of downtime. To deploy a different branch, change `DEPLOY_BRANCH` in `deploy/.env`.
 
 `restore.sh` always takes a safety backup of the current data before replacing it.
+
+---
+
+## Automatic deploys (CD)
+
+Once set up, every push to `master` that passes CI goes live by itself:
+
+```
+push to master → CI (tests) → Deploy workflow: builds the image on GitHub, pushes it to
+ghcr.io/<you>/extract → SSH to the server → deploy.sh downloads that image and restarts
+```
+
+The server never builds anything, so deploys are quicker and a 1 GB server won't run out of
+memory. If the new version doesn't become healthy within 3 minutes, it switches back to the
+previous one automatically.
+
+### Set it up (once, about 10 minutes)
+1. On the server: `cd /opt/extract && sudo ./deploy/setup-cd.sh`. It creates a `deploy` user
+   whose SSH key can *only* start a deploy (no shell), and prints:
+   - **secrets**: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (and
+     `DEPLOY_PORT` if SSH isn't on 22)
+   - **variables**: `APP_DOMAIN`, `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_AUDIENCE`
+2. On GitHub: the repo → **Settings → Secrets and variables → Actions**: add each secret under
+   *Secrets* and each variable under *Variables*.
+3. Push to `master` (or **Actions → Deploy → Run workflow**) and watch it in the Actions tab.
+
+Until the secrets exist the Deploy workflow just skips, so it's safe to have it in the repo.
+
+### Good to know
+- **Rollback:** `sudo ./deploy/deploy.sh --rollback` on the server switches to the previous image
+  (the server keeps the current and previous ones). To redeploy any older commit, run the
+  Deploy workflow from that commit, or revert on `master`.
+- **Registry access:** the image is private (the repo is private). The server logs in with the
+  workflow's own token, which expires when the job ends, so no registry password is stored.
+- **Manual deploys still work:** `sudo ./deploy/deploy.sh` builds on the server as before.
+- **Turning it off:** delete `/etc/sudoers.d/extract-deploy` and the `deploy` user's
+  `~/.ssh/authorized_keys`, or remove the `DEPLOY_HOST` secret.
 
 ---
 

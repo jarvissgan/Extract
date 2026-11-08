@@ -14,7 +14,8 @@ services:
         VITE_authApiAudience: ${AUTH0_AUDIENCE:?set AUTH0_AUDIENCE in deploy/.env}
         VITE_redirectURL: https://${APP_DOMAIN:?set APP_DOMAIN in deploy/.env}/setup
         VITE_axiosBaseUrl: /api
-    image: extract-app:latest
+    # built here by deploy.sh, or a ready-made image from the CD pipeline (deploy/.image)
+    image: ${APP_IMAGE:-extract-app:latest}
     container_name: extract-app
     restart: unless-stopped
     # only what the app needs: no root or backup passwords
