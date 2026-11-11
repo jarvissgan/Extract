@@ -13,6 +13,8 @@ internet ──► Caddy (HTTPS, shared by all your apps) ──► Extract app 
 
 Cost: the server (about US$5–7/month for 1 GB RAM in Singapore) plus the domain (about US$10–15/year).
 
+Going live for the first time? [CHECKLIST.md](CHECKLIST.md) is the short version to tick through.
+
 ---
 
 ## First-time setup (about an hour)
@@ -62,7 +64,7 @@ If the repository is private, clone with a read-only **deploy key** instead: run
 1. installs Docker, restic, a firewall (only SSH, HTTP and HTTPS open) and automatic security updates,
 2. asks for your domain and Auth0 settings,
 3. **generates all passwords** and stores them in `deploy/.env` (readable by root only),
-4. starts Caddy and the app, and sets up nightly backups at 03:17.
+4. starts Caddy and the app, and sets up nightly backups at 03:37.
 
 ### 5. Save the secrets
 At the end, setup prints three passwords **once**. Put them in your password manager now. Without the **backup encryption password**, backups can't be restored.
@@ -131,7 +133,7 @@ memory. If the new version doesn't become healthy within 3 minutes, it switches 
 previous one automatically.
 
 ### Set it up (once, about 10 minutes)
-1. On the server: `cd /opt/extract && sudo ./deploy/setup-cd.sh`. It creates a `deploy` user
+1. On the server: `cd /opt/extract && sudo ./deploy/setup-cd.sh`. It creates an `extract-deploy` user
    whose SSH key can *only* start a deploy (no shell), and prints:
    - **secrets**: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (and
      `DEPLOY_PORT` if SSH isn't on 22)
@@ -149,7 +151,7 @@ Until the secrets exist the Deploy workflow just skips, so it's safe to have it 
 - **Registry access:** the image is private (the repo is private). The server logs in with the
   workflow's own token, which expires when the job ends, so no registry password is stored.
 - **Manual deploys still work:** `sudo ./deploy/deploy.sh` builds on the server as before.
-- **Turning it off:** delete `/etc/sudoers.d/extract-deploy` and the `deploy` user's
+- **Turning it off:** delete `/etc/sudoers.d/extract-deploy` and the `extract-deploy` user's
   `~/.ssh/authorized_keys`, or remove the `DEPLOY_HOST` secret.
 
 ---

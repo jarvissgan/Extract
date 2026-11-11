@@ -84,6 +84,8 @@ RESTIC_REPOSITORY=/var/backups/extract
 ENV
   chmod 600 "$ENV_FILE"
   NEW_SECRETS=1
+  # the rest of setup reads the settings just written
+  load_env
 fi
 
 # ---------- 3. shared HTTPS proxy (Caddy) ----------
@@ -119,8 +121,8 @@ mkdir -p "$(dirname "${RESTIC_REPOSITORY:-/var/backups/extract}")"
 "$DEPLOY_DIR/backup.sh"
 if [ -d /etc/cron.d ]; then
   cat >/etc/cron.d/extract-backup <<CRON
-# Nightly encrypted database backup for Extract (03:17 server time)
-17 3 * * * root $DEPLOY_DIR/backup.sh >> /var/log/extract-backup.log 2>&1
+# Nightly encrypted database backup for Extract (03:37 server time, after the other apps on a shared server)
+37 3 * * * root $DEPLOY_DIR/backup.sh >> /var/log/extract-backup.log 2>&1
 CRON
   chmod 644 /etc/cron.d/extract-backup
 fi

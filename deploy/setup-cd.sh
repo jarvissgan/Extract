@@ -3,14 +3,14 @@
 #
 #   sudo ./deploy/setup-cd.sh
 #
-# Creates a `deploy` user whose SSH key can only run deploy/ci-entry.sh (no shell, no
+# Creates an `extract-deploy` user whose SSH key can only run deploy/ci-entry.sh (no shell, no
 # forwarding), lets it run deploy.sh as root and nothing else, and prints what to add to
 # GitHub. Safe to run again: it replaces the key.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 [ "$(id -u)" -eq 0 ] || die "Run with sudo: sudo ./deploy/setup-cd.sh"
 load_env
 
-USER_NAME=deploy
+USER_NAME=extract-deploy # separate from other apps' deploy users on the same server (e.g. Calendaamor's)
 ENTRY="$DEPLOY_DIR/ci-entry.sh"
 chmod 755 "$ENTRY" "$DEPLOY_DIR/deploy.sh"
 # the scripts run as root, so only root may change them
