@@ -40,8 +40,25 @@ jobs:
       - name: API tests
         run: npm test
 
+      # Chromium is cached between runs (keyed on the lockfile, so a Playwright upgrade fetches
+      # the matching browser). System libraries are only installed if Chromium is missing some:
+      # the runner image normally has them, and Ubuntu's package mirrors are often slow or
+      # unreachable from GitHub's runners.
+      - name: Cache Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install chromium
+          missing="$(find ~/.cache/ms-playwright -type f \( -name chrome -o -name headless_shell -o -name chrome-headless-shell \) -exec ldd {} \; 2>/dev/null | grep 'not found' || true)"
+          if [ -n "$missing" ]; then
+            echo "Chromium is missing system libraries:"; echo "$missing"
+            timeout 300 sudo npx playwright install-deps chromium || echo "::warning::Couldn't install all system libraries; the browser tests may fail."
+          else
+            echo "All system libraries Chromium needs are already installed."
+          fi
       - name: Browser tests
         run: npm run test:e2e
 
