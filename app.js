@@ -55,13 +55,20 @@ export function createApp() {
   });
 
   const requireAuth = createAuthMiddleware();
+  // only the frontend may call the API from a browser
+  const apiCors = cors({
+    origin: (process.env.CORS_ORIGIN || "http://localhost:5173").split(",").map((o) => o.trim()),
+  });
+
+  // Which version is running (shown in Settings), so you can tell a deploy went live.
+  // Set at image build time by the Dockerfile; "dev" when running from source.
+  app.get("/api/version", apiCors, (req, res) => {
+    res.json({ version: process.env.APP_VERSION || "dev", builtAt: process.env.BUILD_TIME || null });
+  });
 
   app.use(
     "/api",
-    // only the frontend may call the API from a browser
-    cors({
-      origin: (process.env.CORS_ORIGIN || "http://localhost:5173").split(",").map((o) => o.trim()),
-    }),
+    apiCors,
     rateLimit({
       windowMs: 60_000,
       limit: Number(process.env.RATE_LIMIT_PER_MINUTE) || 300,

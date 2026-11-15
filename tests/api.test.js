@@ -57,6 +57,13 @@ after(async () => {
   await closeDb();
 });
 
+test("tells anyone which version is running, without signing in", async () => {
+  const res = await api("GET", "/version");
+  assert.equal(res.status, 200);
+  assert.equal(res.body.version, process.env.APP_VERSION || "dev");
+  assert.ok("builtAt" in res.body);
+});
+
 test("rejects requests without a token", async () => {
   const res = await api("GET", "/user");
   assert.equal(res.status, 401);

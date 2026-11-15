@@ -111,7 +111,7 @@ else
   say "Building and restarting ($before → $after)"
   [ "$previous" != "extract-app:latest" ] && echo "$previous" >"$DEPLOY_DIR/.previous-image"
   echo "extract-app:latest" >"$DEPLOY_DIR/.image"
-  compose up -d --build
+  APP_VERSION="$(git rev-parse HEAD)" BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" compose up -d --build
   wait_healthy
 fi
 

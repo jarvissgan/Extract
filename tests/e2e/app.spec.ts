@@ -440,3 +440,12 @@ test("going back from a transaction returns to the month it was opened from", as
   await page.getByRole("link", { name: "Home" }).or(page.getByText("Home", { exact: true })).first().click();
   await expect(page).toHaveURL(new RegExp(`/home/\\w+\\?month=${month}`));
 });
+
+test("the version is shown in Settings and at the bottom of the sidebar", async ({ page }) => {
+  await devLogin(page, "alice@extract.local");
+  await expect(page).toHaveURL(/\/home\/\w+/);
+  await expect(page.getByTestId("sidebar-version")).toHaveText("Version dev");
+  await page.getByText("Settings", { exact: true }).first().click();
+  await expect(page.getByTestId("app-version")).toHaveText("dev");
+  await expect(page.getByTestId("app-built-at")).toHaveText("Running from source");
+});

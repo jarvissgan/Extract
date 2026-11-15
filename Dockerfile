@@ -14,7 +14,12 @@ ARG VITE_authClientID
 ARG VITE_redirectURL
 ARG VITE_authApiAudience
 ARG VITE_axiosBaseUrl=/api
-ENV VITE_authDomain=$VITE_authDomain \
+# the commit and build time, shown in Settings (and served by /api/version)
+ARG APP_VERSION=dev
+ARG BUILD_TIME=
+ENV VITE_APP_VERSION=$APP_VERSION \
+    VITE_BUILD_TIME=$BUILD_TIME \
+    VITE_authDomain=$VITE_authDomain \
     VITE_authClientID=$VITE_authClientID \
     VITE_redirectURL=$VITE_redirectURL \
     VITE_authApiAudience=$VITE_authApiAudience \
@@ -23,7 +28,11 @@ RUN npm run build
 
 # ---- runtime ----
 FROM node:22-alpine
-ENV NODE_ENV=production \
+ARG APP_VERSION=dev
+ARG BUILD_TIME=
+ENV APP_VERSION=$APP_VERSION \
+    BUILD_TIME=$BUILD_TIME \
+    NODE_ENV=production \
     PORT=3000 \
     STATIC_DIR=/app/dist
 WORKDIR /app

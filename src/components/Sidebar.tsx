@@ -14,7 +14,9 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useCurrentUser } from "../context/UserContext";
 import { useTransactionEntry } from "../context/TransactionEntry";
 import { ctaProps, useAppearance } from "../theme/Appearance";
+import dayjs from "dayjs";
 import { PoohBear } from "./Pooh";
+import { APP_BUILT_AT, APP_VERSION, formatBuiltAt, shortVersion } from "../lib/version";
 import { useMonthQuery } from "../hooks/useMonthTransactions";
 
 const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
@@ -117,6 +119,17 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
             Log in
           </Button>
         )}
+        {/* which version is running, e.g. to check a deploy went live */}
+        <Text
+          size="xs"
+          c="dimmed"
+          ta="center"
+          data-testid="sidebar-version"
+          title={formatBuiltAt(APP_BUILT_AT) ?? undefined}
+        >
+          Version {shortVersion(APP_VERSION)}
+          {APP_BUILT_AT && ` · ${dayjs(APP_BUILT_AT).format("D MMM YYYY")}`}
+        </Text>
       </Stack>
     </Stack>
   );

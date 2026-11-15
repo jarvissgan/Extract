@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Checkbox,
+  Code,
   ColorSwatch,
   Divider,
   Group,
@@ -33,6 +34,7 @@ import { parseJson, type RecurringRule, type TransactionRow, type TransactionTyp
 import { downloadFile } from "../lib/csv";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCurrentUser } from "../context/UserContext";
+import { APP_BUILT_AT, APP_VERSION, formatBuiltAt, shortVersion } from "../lib/version";
 import {
   BUILTIN_CATEGORIES,
   CATEGORY_COLORS,
@@ -697,6 +699,51 @@ const DataSection = () => {
   );
 };
 
+// The version this page was built from, and the one the server is running. They differ
+// for a moment after a deploy, until the page is refreshed.
+const AboutSection = () => {
+  const [server, setServer] = useState<{ version: string } | null>(null);
+  useEffect(() => {
+    api
+      .get<{ version: string }>("/version")
+      .then((res) => setServer(res.data))
+      .catch(() => setServer(null));
+  }, []);
+  const outdated = server && server.version !== APP_VERSION;
+
+  return (
+    <Section
+      title="About"
+      description="Which version you're using. After a deploy, the version and update time change here."
+    >
+      <Stack gap={6}>
+        <Group gap="xs">
+          <Text size="sm" w={110} c="dimmed">
+            Version
+          </Text>
+          <Code data-testid="app-version">{shortVersion(APP_VERSION)}</Code>
+        </Group>
+        <Group gap="xs">
+          <Text size="sm" w={110} c="dimmed">
+            Last updated
+          </Text>
+          <Text size="sm" data-testid="app-built-at">
+            {formatBuiltAt(APP_BUILT_AT) ?? "Running from source"}
+          </Text>
+        </Group>
+        {outdated && (
+          <Alert color="blue" variant="light" mt="xs">
+            A newer version ({shortVersion(server.version)}) is live.{" "}
+            <UnstyledButton onClick={() => window.location.reload()} fz="sm" fw={600} td="underline">
+              Refresh to update
+            </UnstyledButton>
+          </Alert>
+        )}
+      </Stack>
+    </Section>
+  );
+};
+
 const Settings = () => (
   <Stack p={{ base: "md", md: "xl" }} gap="lg" maw={920}>
     <div>
@@ -712,6 +759,7 @@ const Settings = () => (
     <RulesSection />
     <RecurringSection />
     <DataSection />
+    <AboutSection />
   </Stack>
 );
 
