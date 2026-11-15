@@ -6,12 +6,14 @@ import { currencySymbol } from "../lib/transactions";
 import { CURRENCIES, describeError, userSchema } from "../../shared/schemas.js";
 
 interface Props {
+  // suggested from the login (e.g. the Google account's name); the person can change it
   username: string;
   email: string;
   onCreated: () => void | Promise<void>;
 }
 
-const UserAccountForm = ({ username, email, onCreated }: Props) => {
+const UserAccountForm = ({ username: suggestedName, email, onCreated }: Props) => {
+  const [username, setUsername] = useState(suggestedName);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [monthlyBudget, setMonthlyBudget] = useState<number | string>("");
   const [currency, setCurrency] = useState("USD");
@@ -20,7 +22,7 @@ const UserAccountForm = ({ username, email, onCreated }: Props) => {
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const parsed = userSchema.safeParse({
-      username,
+      username: username.trim(),
       preference_json: {
         budgets: { monthly: monthlyBudget === "" ? "" : Number(monthlyBudget) },
         notifications: { email: emailNotifications },
@@ -37,7 +39,7 @@ const UserAccountForm = ({ username, email, onCreated }: Props) => {
       await api.post("/user", parsed.data);
       notifications.show({
         title: "Account created",
-        message: `Welcome, ${username}!`,
+        message: `Welcome, ${username.trim()}!`,
         color: "green",
       });
       await onCreated();
@@ -60,7 +62,15 @@ const UserAccountForm = ({ username, email, onCreated }: Props) => {
   return (
     <form onSubmit={onSubmit}>
       <Stack>
-        <TextInput label="Username" value={username} readOnly />
+        <TextInput
+          label="Your name"
+          description="Shown in the app. It doesn't have to match your Google or Apple account, and you can change it later in Settings."
+          value={username}
+          onChange={(e) => setUsername(e.currentTarget.value)}
+          maxLength={255}
+          required
+          data-autofocus
+        />
 
         <Tooltip label="This is the email you signed up with and can't be changed.">
           <TextInput label="Email" type="email" value={email} readOnly />

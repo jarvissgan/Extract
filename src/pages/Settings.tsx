@@ -100,7 +100,7 @@ const AccountSection = () => {
     e.preventDefault();
     setSaving(true);
     const ok = await save({
-      username,
+      username: username.trim(),
       preferences: {
         budgets: { ...preferences.budgets, monthly: budget === "" ? "" : Number(budget) },
         currency: newCurrency,
@@ -115,7 +115,14 @@ const AccountSection = () => {
     <Section title="Account" description="Your name, monthly budget and currency.">
       <form onSubmit={onSubmit}>
         <Stack maw={420}>
-          <TextInput label="Username" value={username} onChange={(e) => setUsername(e.currentTarget.value)} required />
+          <TextInput
+            label="Name"
+            description="Shown in the app, e.g. in the greeting on Home and the sidebar."
+            value={username}
+            onChange={(e) => setUsername(e.currentTarget.value)}
+            maxLength={255}
+            required
+          />
           <TextInput label="Email" value={user?.email ?? ""} readOnly description="Comes from your login and can't be changed here." />
           <Group grow align="flex-start">
             <NumberInput

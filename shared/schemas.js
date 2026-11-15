@@ -115,7 +115,7 @@ export const preferencesSchema = z.object({
 });
 
 export const userSchema = z.object({
-  username: z.string().trim().min(1, "Username is required").max(255),
+  username: z.string().trim().min(1, "Please enter your name").max(255, "That name is too long"),
   user_details: z.record(z.string(), z.unknown()).default({}),
   preference_json: preferencesSchema,
   account_status: z.object({ status: z.string().min(1) }).default({ status: "active" }),

@@ -449,3 +449,32 @@ test("the version is shown in Settings and at the bottom of the sidebar", async 
   await expect(page.getByTestId("app-version")).toHaveText("dev");
   await expect(page.getByTestId("app-built-at")).toHaveText("Running from source");
 });
+
+test("people choose their own name at setup and can change it later", async ({ page }) => {
+  // the login says "Login Name"; the person goes by something else
+  await page.goto("/dev-login?returnTo=/setup");
+  await page.getByLabel("Email").fill(uniqueEmail("rename"));
+  await page.getByLabel("Name").fill("Login Name");
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  const nameField = page.getByRole("textbox", { name: "Your name" });
+  await expect(nameField).toHaveValue("Login Name"); // suggested, not forced
+  await nameField.fill("Kai Tan");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/home\/\w+/);
+  await expect(page.getByRole("heading", { name: "Hello, Kai" })).toBeVisible();
+
+  // a blank name isn't accepted
+  await page.getByText("Settings", { exact: true }).first().click();
+  const settingsName = page.getByRole("textbox", { name: "Name", exact: true }).first(); // the Account section
+  await expect(settingsName).toHaveValue("Kai Tan");
+  await settingsName.fill("   ");
+  await page.getByRole("button", { name: "Save" }).first().click();
+  await expect(page.getByText("Please enter your name")).toBeVisible();
+
+  await settingsName.fill("Kaiden");
+  await page.getByRole("button", { name: "Save" }).first().click();
+  await expect(page.getByText("Settings saved.")).toBeVisible();
+  await page.getByText("Home", { exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Hello, Kaiden" })).toBeVisible();
+});

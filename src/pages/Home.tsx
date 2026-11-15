@@ -34,8 +34,10 @@ import { expensesOf, findCategory, sumAmounts } from "../lib/transactions";
 const progressColor = (percent: number) => (percent >= 100 ? "red" : percent >= 80 ? "yellow" : "teal");
 
 const Home = () => {
-  const { user } = useAuth0();
-  const { monthlyBudget, categoryBudgets, categories, formatMoney } = useCurrentUser();
+  const { user: authUser } = useAuth0();
+  const { user, monthlyBudget, categoryBudgets, categories, formatMoney } = useCurrentUser();
+  // the name chosen in setup or Settings; the login's name only until the account exists
+  const firstName = user?.username?.trim().split(/\s+/)[0] || authUser?.given_name || authUser?.name || "there";
   const { month, setMonth } = useSelectedMonth();
   const { transactions, spent, income, loading, error } = useMonthTransactions(month);
   const previous = useMonthTransactions(month.subtract(1, "month"));
@@ -75,7 +77,7 @@ const Home = () => {
 
   return (
     <Stack p={{ base: "md", md: "xl" }} gap="lg">
-      <MonthHeader title={`Hello, ${user?.given_name || user?.name || "there"}`} month={month} onMonthChange={setMonth} />
+      <MonthHeader title={`Hello, ${firstName}`} month={month} onMonthChange={setMonth} />
       <QuickAddBar />
 
       {loading ? (
