@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Badge, Box, Button, Card, Container, Group, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
+import { Badge, Box, Button, Card, Checkbox, Container, Group, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
 import { IconChartPie, IconPigMoney, IconReceipt, IconTargetArrow } from "@tabler/icons-react";
 import { ctaProps, useAppearance } from "../theme/Appearance";
 import { PoohBear } from "../components/Pooh";
 import { useNavigate } from "react-router";
 import { useCurrentUser } from "../context/UserContext";
+import { useLogin } from "../auth/useLogin";
+import { getRemember } from "../auth/remember";
 
 const FEATURES = [
   {
@@ -30,7 +33,9 @@ const FEATURES = [
 ];
 
 const Landing = () => {
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const { isAuthenticated } = useAuth0();
+  const login = useLogin();
+  const [remember, setRememberChoice] = useState(getRemember);
   const { sqid } = useCurrentUser();
   const navigate = useNavigate();
   const { appearance } = useAppearance();
@@ -59,9 +64,17 @@ const Landing = () => {
                 Go to dashboard
               </Button>
             ) : (
-              <Button size="lg" {...ctaProps(appearance)} onClick={() => loginWithRedirect({ appState: { returnTo: "/setup" } })}>
-                Get started
-              </Button>
+              <Stack gap="sm">
+                <Button size="lg" {...ctaProps(appearance)} onClick={() => login("/setup", remember)}>
+                  Get started
+                </Button>
+                <Checkbox
+                  label="Remember me on this device"
+                  description="Untick on a shared computer: you'll be logged out when the browser closes."
+                  checked={remember}
+                  onChange={(e) => setRememberChoice(e.currentTarget.checked)}
+                />
+              </Stack>
             )}
           </Group>
         </Stack>

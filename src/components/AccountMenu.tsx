@@ -2,17 +2,19 @@ import { ActionIcon, Avatar, Button, Menu, Text } from "@mantine/core";
 import { IconLogin, IconLogout, IconSettings } from "@tabler/icons-react";
 import { useNavigate } from "react-router";
 import { useAuth0 } from "@auth0/auth0-react";
+import { useLogin } from "../auth/useLogin";
 import { useCurrentUser } from "../context/UserContext";
 
 // Header account menu on phones, where there's no sidebar: Settings and Log out.
 const AccountMenu = () => {
-  const { isAuthenticated, loginWithRedirect, logout, user: authUser } = useAuth0();
+  const { isAuthenticated, logout, user: authUser } = useAuth0();
+  const login = useLogin();
   const { user, status } = useCurrentUser();
   const navigate = useNavigate();
 
   if (!isAuthenticated) {
     return (
-      <Button size="compact-md" leftSection={<IconLogin size={16} />} onClick={() => loginWithRedirect({ appState: { returnTo: "/setup" } })}>
+      <Button size="compact-md" leftSection={<IconLogin size={16} />} onClick={() => login("/setup")}>
         Log in
       </Button>
     );

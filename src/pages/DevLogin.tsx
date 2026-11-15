@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Alert, Button, Center, Divider, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Center, Checkbox, Divider, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconTool } from "@tabler/icons-react";
 import { SEEDED_DEV_USERS, type DevUser } from "../auth/devAuth";
+import { getRemember, setRemember } from "../auth/remember";
 
 // Offline login screen used when VITE_AUTH_MODE=dev.
 const DevLogin = () => {
@@ -13,8 +14,10 @@ const DevLogin = () => {
   const returnTo = params.get("returnTo") || "/setup";
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [remember, setRememberChoice] = useState(getRemember);
 
   const signIn = (user: DevUser) => {
+    setRemember(remember);
     auth.devSignIn?.(user);
     navigate(returnTo, { replace: true });
   };
@@ -34,6 +37,12 @@ const DevLogin = () => {
           <Alert color="yellow" icon={<IconTool size={18} />}>
             Offline auth is on (VITE_AUTH_MODE=dev). Pick any email; no password needed.
           </Alert>
+
+          <Checkbox
+            label="Remember me on this device"
+            checked={remember}
+            onChange={(e) => setRememberChoice(e.currentTarget.checked)}
+          />
 
           <Text size="sm" fw={600}>
             Seeded users
