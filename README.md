@@ -24,6 +24,9 @@ Works on phones: bottom tab bar, full-screen forms, lists instead of tables, and
 - API: Express, validated with zod (shared with the frontend in `shared/schemas.js`)
 - Database: MariaDB 11 via `mysql2` (MySQL 8 works too; CI tests both)
 
+## iPhone app
+A native SwiftUI app for iPhone lives in [`ios/`](ios/README.md). It uses the same API, so nothing changes on the server.
+
 ## Quick start (offline, no Auth0 needed)
 Needs Node 22+, Docker, and Docker Compose (the `docker compose` plugin from Docker Desktop, or the standalone `docker-compose`, e.g. `brew install docker-compose`).
 
