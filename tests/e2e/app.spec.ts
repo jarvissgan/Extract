@@ -478,3 +478,34 @@ test("people choose their own name at setup and can change it later", async ({ p
   await page.getByText("Home", { exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "Hello, Kaiden" })).toBeVisible();
 });
+
+test("remember me: unticked logs out once the browser restarts, ticked stays logged in", async ({ page, context }) => {
+  // closing the browser deletes session cookies but keeps saved data; clearCookies() does the same
+  const restartBrowser = async () => {
+    await context.clearCookies();
+    await page.reload();
+  };
+
+  await page.goto("/dev-login?returnTo=/setup");
+  await page.getByLabel("Remember me on this device").uncheck();
+  await page.getByRole("button", { name: /Alice/ }).click();
+  await expect(page).toHaveURL(/\/home\/\w+/);
+  await page.reload(); // same browser session: still logged in
+  await expect(page).toHaveURL(/\/home\/\w+/);
+
+  await page.getByText("Settings", { exact: true }).first().click();
+  await expect(page.getByRole("switch", { name: "Remember me on this device" })).not.toBeChecked();
+
+  await restartBrowser();
+  await expect(page.getByRole("button", { name: "Get started" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Account menu" })).toHaveCount(0);
+
+  // ticked (the default from now on is the last choice, so tick it again)
+  await page.goto("/dev-login?returnTo=/setup");
+  await page.getByLabel("Remember me on this device").check();
+  await page.getByRole("button", { name: /Alice/ }).click();
+  await expect(page).toHaveURL(/\/home\/\w+/);
+  await restartBrowser();
+  await expect(page).toHaveURL(/\/home\/\w+/);
+  await expect(page.getByRole("heading", { name: /Hello/ })).toBeVisible();
+});

@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth0 } from "@auth0/auth0-react";
+import { useLogin } from "../auth/useLogin";
 import { useCurrentUser } from "../context/UserContext";
 import { useTransactionEntry } from "../context/TransactionEntry";
 import { ctaProps, useAppearance } from "../theme/Appearance";
@@ -22,7 +23,8 @@ import { useMonthQuery } from "../hooks/useMonthTransactions";
 const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { isAuthenticated, loginWithRedirect, logout, user: authUser } = useAuth0();
+  const { isAuthenticated, logout, user: authUser } = useAuth0();
+  const login = useLogin();
   const { status, sqid, user } = useCurrentUser();
   const { openAdd } = useTransactionEntry();
   const { appearance } = useAppearance();
@@ -114,7 +116,7 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
         ) : (
           <Button
             leftSection={<IconLogin size={18} />}
-            onClick={() => loginWithRedirect({ appState: { returnTo: "/setup" } })}
+            onClick={() => login("/setup")}
           >
             Log in
           </Button>

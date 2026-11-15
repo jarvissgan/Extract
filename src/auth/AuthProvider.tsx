@@ -7,6 +7,7 @@ import {
   type Auth0ContextInterface,
   type RedirectLoginOptions,
 } from "@auth0/auth0-react";
+import { SessionGuard } from "./remember";
 import { DEV_AUTH, devToken, loadDevUser, saveDevUser, type DevUser } from "./devAuth";
 
 // Fills the same Auth0 context the app already reads through useAuth0(),
@@ -83,6 +84,12 @@ const RealAuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-const AuthProvider = DEV_AUTH ? DevAuthProvider : RealAuthProvider;
+const Provider = DEV_AUTH ? DevAuthProvider : RealAuthProvider;
+
+const AuthProvider = ({ children }: { children: ReactNode }) => (
+  <Provider>
+    <SessionGuard>{children}</SessionGuard>
+  </Provider>
+);
 
 export default AuthProvider;

@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { useAuth0 } from "@auth0/auth0-react";
+import { useLogin } from "../auth/useLogin";
 import { Button, Center, Loader, Stack, Text, Title } from "@mantine/core";
 import { useCurrentUser } from "../context/UserContext";
 
@@ -11,7 +12,8 @@ const FullLoader = () => (
 
 // Only renders child routes for signed-in users; offers a login button otherwise.
 export const RequireAuth = () => {
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, isLoading } = useAuth0();
+  const login = useLogin();
   const location = useLocation();
 
   if (isLoading) return <FullLoader />;
@@ -23,11 +25,7 @@ export const RequireAuth = () => {
           <Title order={3}>Please log in</Title>
           <Text c="dimmed">You need to be signed in to see this page.</Text>
           <Button
-            onClick={() =>
-              loginWithRedirect({
-                appState: { returnTo: location.pathname + location.search },
-              })
-            }
+            onClick={() => login(location.pathname + location.search)}
           >
             Log in
           </Button>

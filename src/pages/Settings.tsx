@@ -34,6 +34,7 @@ import { parseJson, type RecurringRule, type TransactionRow, type TransactionTyp
 import { downloadFile } from "../lib/csv";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCurrentUser } from "../context/UserContext";
+import { getRemember, setRemember } from "../auth/remember";
 import { APP_BUILT_AT, APP_VERSION, formatBuiltAt, shortVersion } from "../lib/version";
 import {
   BUILTIN_CATEGORIES,
@@ -751,6 +752,28 @@ const AboutSection = () => {
   );
 };
 
+// Saved on this device only: whether to stay logged in after the browser closes.
+const LoginSection = () => {
+  const [remember, setRememberState] = useState(getRemember);
+  return (
+    <Section title="Login" description="Saved on this device.">
+      <Switch
+        label="Remember me on this device"
+        description={
+          remember
+            ? "You stay logged in after closing the browser."
+            : "You'll be logged out the next time the browser starts. Good for shared computers."
+        }
+        checked={remember}
+        onChange={(e) => {
+          setRemember(e.currentTarget.checked);
+          setRememberState(e.currentTarget.checked);
+        }}
+      />
+    </Section>
+  );
+};
+
 const Settings = () => (
   <Stack p={{ base: "md", md: "xl" }} gap="lg" maw={920}>
     <div>
@@ -760,6 +783,7 @@ const Settings = () => (
       </Text>
     </div>
     <AccountSection />
+    <LoginSection />
     <AppearanceSection />
     <BudgetsSection />
     <CategoriesSection />
