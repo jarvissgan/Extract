@@ -10,7 +10,8 @@ concurrency:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # pinned: ubuntu-latest moved to 26.04, which this Playwright version doesn't support yet
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +76,8 @@ jobs:
   # Your local database may be MySQL rather than MariaDB: migrations and the API must work on both.
   mysql:
     name: API tests on MySQL 8
-    runs-on: ubuntu-latest
+    # pinned: ubuntu-latest moved to 26.04, which this Playwright version doesn't support yet
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     services:
       mysql:
