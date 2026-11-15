@@ -25,7 +25,7 @@ Works on phones: bottom tab bar, full-screen forms, lists instead of tables, and
 - Database: MariaDB 11 via `mysql2` (MySQL 8 works too; CI tests both)
 
 ## iPhone app
-A native SwiftUI app for iPhone lives in [`ios/`](ios/README.md). It uses the same API, so nothing changes on the server.
+The iPhone app is [Amor](https://github.com/jarvissgan/Amor), which combines this with the other services of the personal dashboard in one app. It uses this API as is.
 
 ## Quick start (offline, no Auth0 needed)
 Needs Node 22+, Docker, and Docker Compose (the `docker compose` plugin from Docker Desktop, or the standalone `docker-compose`, e.g. `brew install docker-compose`).
