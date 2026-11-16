@@ -52,6 +52,7 @@ export interface UserPreferences {
   notifications?: { email?: boolean };
   currency?: string;
   categories?: CategoryOption[];
+  privacy?: { hide_amounts?: boolean };
 }
 
 export interface UserRow {

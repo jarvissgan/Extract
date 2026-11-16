@@ -150,8 +150,18 @@ const SidePanel = ({ transaction }: { transaction: Transaction }) => {
 
 const TransactionDetail = () => {
   const { transaction_uuid } = useParams();
-  const { sqid, user, preferences, rules, categories, currencySymbol, notifyTransactionsChanged, refreshUser } =
-    useCurrentUser();
+  const {
+    sqid,
+    user,
+    preferences,
+    rules,
+    categories,
+    currencySymbol,
+    notifyTransactionsChanged,
+    refreshUser,
+    hideAmounts,
+    formatMoney,
+  } = useCurrentUser();
   const navigate = useNavigate();
   const { openAdd } = useTransactionEntry();
   const isMobile = useIsMobile();
@@ -414,19 +424,24 @@ const TransactionDetail = () => {
                   error={errors.transaction_name}
                   onChange={(e) => setName(e.currentTarget.value)}
                 />
-                <NumberInput
-                  required
-                  readOnly={!editing}
-                  label="Amount"
-                  prefix={currencySymbol}
-                  thousandSeparator=","
-                  decimalScale={2}
-                  fixedDecimalScale
-                  allowNegative={false}
-                  value={amount}
-                  error={errors.transaction_amount}
-                  onChange={setAmount}
-                />
+                {hideAmounts && !editing ? (
+                  // concealed until editing (the eye button in the header shows it)
+                  <TextInput readOnly label="Amount" value={formatMoney(Number(amount) || 0)} />
+                ) : (
+                  <NumberInput
+                    required
+                    readOnly={!editing}
+                    label="Amount"
+                    prefix={currencySymbol}
+                    thousandSeparator=","
+                    decimalScale={2}
+                    fixedDecimalScale
+                    allowNegative={false}
+                    value={amount}
+                    error={errors.transaction_amount}
+                    onChange={setAmount}
+                  />
+                )}
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <Select
                     readOnly={!editing}

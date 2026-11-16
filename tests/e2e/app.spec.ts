@@ -509,3 +509,28 @@ test("remember me: unticked logs out once the browser restarts, ticked stays log
   await expect(page).toHaveURL(/\/home\/\w+/);
   await expect(page.getByRole("heading", { name: /Hello/ })).toBeVisible();
 });
+
+test("the eye button conceals amounts, and Settings sets whether they start hidden", async ({ page, context }) => {
+  await signUp(page, "privacy", "1500");
+  const hideButton = page.getByRole("button", { name: "Hide amounts" });
+  await expect(page.getByText(/\$1,500\.00/).first()).toBeVisible();
+
+  await hideButton.click();
+  await expect(page.getByRole("button", { name: "Show amounts" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(/\$1,500\.00/)).toHaveCount(0);
+  await expect(page.getByText(/\$••••/).first()).toBeVisible();
+  await page.reload(); // stays hidden for this visit
+  await expect(page.getByText(/\$••••/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Show amounts" }).click();
+  await expect(page.getByText(/\$1,500\.00/).first()).toBeVisible();
+
+  // default: hidden on every new visit
+  await page.getByText("Settings", { exact: true }).first().click();
+  await page.getByText("Hide amounts by default").click();
+  await expect(page.getByText("Amounts will start hidden.")).toBeVisible();
+  const newVisit = await context.newPage(); // a new tab starts a new visit
+  await newVisit.goto(page.url().replace(/\/settings.*/, "/"));
+  await newVisit.getByRole("button", { name: /Go to dashboard/ }).click();
+  await expect(newVisit.getByRole("button", { name: "Show amounts" })).toBeVisible();
+  await expect(newVisit.getByText(/\$1,500\.00/)).toHaveCount(0);
+});

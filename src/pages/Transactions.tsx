@@ -41,7 +41,7 @@ import { downloadFile, transactionsToCsv } from "../lib/csv";
 import { expensesOf, findCategory, incomeOf, sumAmounts } from "../lib/transactions";
 
 const Transactions = () => {
-  const { categories, formatMoney, notifyTransactionsChanged } = useCurrentUser();
+  const { categories, formatMoney, hideAmounts, notifyTransactionsChanged } = useCurrentUser();
   const { month, setMonth } = useSelectedMonth();
   const { transactions, loading, error } = useMonthTransactions(month);
   const [search, setSearch] = useState("");
@@ -112,7 +112,9 @@ const Transactions = () => {
   });
   const daily = totals.map((value, i) => ({ day: String(i + 1), [seriesName]: value }));
   const compactMoney = (v: number) =>
-    v >= 1000
+    hideAmounts
+      ? formatMoney(v)
+      : v >= 1000
       ? `${formatMoney(v / 1000)
           .replace(/\.00$/, "")
           .replace(/(\.\d)0$/, "$1")}k`

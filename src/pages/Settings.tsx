@@ -752,6 +752,29 @@ const AboutSection = () => {
   );
 };
 
+// Account-wide default for the eye button in the header.
+const PrivacySection = () => {
+  const { preferences, setHideAmounts } = useCurrentUser();
+  const save = useSaveAccount();
+  const hideByDefault = !!preferences.privacy?.hide_amounts;
+  return (
+    <Section title="Privacy" description="Useful if people can see your screen. The eye button at the top shows or hides amounts at any time.">
+      <Switch
+        label="Hide amounts by default"
+        description="Balances, totals, budgets and chart values start hidden on every device you sign in to."
+        checked={hideByDefault}
+        onChange={async (e) => {
+          const hide = e.currentTarget.checked;
+          if (await save({ preferences: { privacy: { hide_amounts: hide } } })) {
+            setHideAmounts(hide); // apply it now as well
+            notifications.show({ message: hide ? "Amounts will start hidden." : "Amounts will start shown.", color: "green" });
+          }
+        }}
+      />
+    </Section>
+  );
+};
+
 // Saved on this device only: whether to stay logged in after the browser closes.
 const LoginSection = () => {
   const [remember, setRememberState] = useState(getRemember);
@@ -784,6 +807,7 @@ const Settings = () => (
     </div>
     <AccountSection />
     <LoginSection />
+    <PrivacySection />
     <AppearanceSection />
     <BudgetsSection />
     <CategoriesSection />

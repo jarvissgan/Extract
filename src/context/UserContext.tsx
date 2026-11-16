@@ -38,12 +38,17 @@ interface UserContextValue {
   categories: CategoryOption[];
   currency: string;
   currencySymbol: string;
+  // shows amounts, or a mask like "$••••" while they're hidden
   formatMoney: (value: number) => string;
+  hideAmounts: boolean;
+  setHideAmounts: (hide: boolean) => void;
   refreshUser: () => Promise<void>;
   // Goes up by one whenever transactions change, so lists know to refetch.
   transactionsVersion: number;
   notifyTransactionsChanged: () => void;
 }
+
+const HIDE_KEY = "extract-hide-amounts";
 
 const UserContext = createContext<UserContextValue | null>(null);
 
@@ -90,10 +95,32 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const notifyTransactionsChanged = useCallback(() => setTransactionsVersion((v) => v + 1), []);
 
+  // The eye button's choice for this visit (kept across reloads in this tab); until it's
+  // pressed, the default from Settings applies.
+  const [hideOverride, setHideOverride] = useState<boolean | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(HIDE_KEY);
+      return saved === null ? null : saved === "1";
+    } catch {
+      return null;
+    }
+  });
+  const setHideAmounts = useCallback((hide: boolean) => {
+    setHideOverride(hide);
+    try {
+      sessionStorage.setItem(HIDE_KEY, hide ? "1" : "0");
+    } catch {
+      // storage unavailable: the choice lasts until the page is reloaded
+    }
+  }, []);
+
   const value = useMemo<UserContextValue>(() => {
     const preferences = parseJson<UserPreferences>(user?.preference_json, {});
     const monthly = preferences.budgets?.monthly;
     const currency = preferences.currency || "USD";
+    const hideAmounts = hideOverride ?? !!preferences.privacy?.hide_amounts;
+    const symbol = currencySymbol(currency);
+    const showMoney = makeMoneyFormatter(currency);
     return {
       status,
       user,
@@ -107,13 +134,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       ),
       categories: userCategories(preferences),
       currency,
-      currencySymbol: currencySymbol(currency),
-      formatMoney: makeMoneyFormatter(currency),
+      currencySymbol: symbol,
+      formatMoney: hideAmounts ? () => `${symbol}••••` : showMoney,
+      hideAmounts,
+      setHideAmounts,
       refreshUser,
       transactionsVersion,
       notifyTransactionsChanged,
     };
-  }, [status, user, refreshUser, transactionsVersion, notifyTransactionsChanged]);
+  }, [status, user, refreshUser, transactionsVersion, notifyTransactionsChanged, hideOverride, setHideAmounts]);
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };

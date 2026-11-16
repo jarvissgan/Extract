@@ -101,6 +101,9 @@ export const preferencesSchema = z.object({
   rules: z.array(ruleSchema).max(MAX_RULES, `At most ${MAX_RULES} rules`).default([]),
   notifications: z.object({ email: z.boolean().default(false) }).default({ email: false }),
   currency: z.enum(CURRENCIES).default("USD"),
+  // hide_amounts: start each visit with amounts concealed (the eye button in the header
+  // shows or hides them for the current visit)
+  privacy: z.object({ hide_amounts: z.boolean().default(false) }).default({ hide_amounts: false }),
   // a custom category whose key later became built-in (e.g. "travel") is dropped:
   // the built-in one has the same key, so its transactions keep their category
   categories: z

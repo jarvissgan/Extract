@@ -6,6 +6,7 @@ import AppearanceToggle from "./components/AppearanceToggle";
 import Sidebar from "./components/Sidebar";
 import MobileNav from "./components/MobileNav";
 import AccountMenu from "./components/AccountMenu";
+import HideAmountsButton from "./components/HideAmountsButton";
 import { useCurrentUser } from "./context/UserContext";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { RequireAccount, RequireAuth } from "./components/RouteGuards";
@@ -53,6 +54,7 @@ const AppRoutes = () => {
             )}
           </Group>
           <Group gap="xs" wrap="nowrap">
+            <HideAmountsButton />
             <AppearanceToggle />
             <Box hiddenFrom="sm">
               <AccountMenu />
