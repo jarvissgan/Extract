@@ -36,6 +36,7 @@ import QuickAddBar from "../components/QuickAddBar";
 import StatCard from "../components/StatCard";
 import TransactionTable from "../components/TransactionTable";
 import { useCurrentUser } from "../context/UserContext";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useMonthTransactions, useSelectedMonth } from "../hooks/useMonthTransactions";
 import { downloadFile, transactionsToCsv } from "../lib/csv";
 import { expensesOf, findCategory, incomeOf, sumAmounts } from "../lib/transactions";
@@ -43,6 +44,7 @@ import { expensesOf, findCategory, incomeOf, sumAmounts } from "../lib/transacti
 const Transactions = () => {
   const { categories, formatMoney, hideAmounts, notifyTransactionsChanged } = useCurrentUser();
   const { month, setMonth } = useSelectedMonth();
+  const isMobile = useIsMobile();
   const { transactions, loading, error } = useMonthTransactions(month);
   const [search, setSearch] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -173,13 +175,13 @@ const Transactions = () => {
               <StatCard
                 label={`Daily ${measure}`}
                 icon={<IconCalendarStats size={20} />}
-                color={showIncome ? "teal" : "blue"}
+                color={showIncome ? "teal" : "gray"}
               >
                 <BarChart
                   h={120}
                   data={daily}
                   dataKey="day"
-                  series={[{ name: seriesName, color: showIncome ? "teal.6" : "blue.6" }]}
+                  series={[{ name: seriesName, color: showIncome ? "teal.6" : "gray.6" }]}
                   gridAxis="x"
                   tickLine="none"
                   yAxisProps={{ width: 44, tickCount: 3, tickFormatter: compactMoney }}
@@ -241,7 +243,7 @@ const Transactions = () => {
                 w={{ base: "100%", xs: 260 }}
               />
             </Group>
-            <Group gap="xs" grow w={{ base: "100%", md: "auto" }}>
+            <Group gap="xs" grow={isMobile} w={{ base: "100%", md: "auto" }} wrap="nowrap">
               <Button variant="default" leftSection={<IconUpload size={16} />} onClick={importModal.open}>
                 Import
               </Button>

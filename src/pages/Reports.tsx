@@ -138,7 +138,7 @@ const Reports = () => {
               dataKey="month"
               series={[
                 { name: "Income", color: "teal.6" },
-                { name: "Spent", color: "red.6" },
+                { name: "Spent", color: "gray.6" },
               ]}
               valueFormatter={formatMoney}
               withLegend

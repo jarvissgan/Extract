@@ -68,11 +68,6 @@ const Sidebar = ({ onNavigate }: { onNavigate: () => void }) => {
             Add transaction
           </Button>
         )}
-        {status === "ready" && (
-          <Text size="xs" fw={700} c="dimmed" tt="uppercase" mt="lg" mb={4} px="sm">
-            Menu
-          </Text>
-        )}
         {status === "ready" &&
           links.map(({ label, icon: Icon, to }) => (
             <NavLink

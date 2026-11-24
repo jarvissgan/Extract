@@ -90,7 +90,7 @@ const QuickAddBar = () => {
   const showPreview = value.trim() && !problem;
 
   return (
-    <Card padding="sm" shadow="xs">
+    <Card padding="sm">
       <form onSubmit={submit}>
         <TextInput
           ref={inputRef}

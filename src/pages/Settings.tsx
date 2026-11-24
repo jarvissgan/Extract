@@ -446,8 +446,8 @@ const RecurringSection = () => {
 };
 
 const PREVIEW: Record<Appearance, { bg: string; card: string; accent: string; text: string }> = {
-  light: { bg: "#f7f7fb", card: "#ffffff", accent: "#7950f2", text: "#212529" },
-  dark: { bg: "#1f1f24", card: "#2e2e33", accent: "#9775fa", text: "#e9ecef" },
+  light: { bg: "#f3f5f2", card: "#ffffff", accent: "#12795b", text: "#17201c" },
+  dark: { bg: "#15201b", card: "#1d2924", accent: "#46ae85", text: "#e4ece7" },
   a: { bg: "#fff8db", card: "#fffdf5", accent: "#f06595", text: "#4a3426" },
 };
 

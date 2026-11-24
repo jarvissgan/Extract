@@ -29,22 +29,83 @@ const butter: MantineColorsTuple = [
   "#8f7208",
 ];
 
+// Jade: the one brand colour. It marks primary actions, income and "on track"; amber
+// (yellow) means close to a limit and red means over it. Everything else stays neutral.
+// It replaces Mantine's teal, so every existing teal (income, positive change) follows.
+const jade: MantineColorsTuple = [
+  "#e8f6f0",
+  "#cdeadd",
+  "#9fd6bf",
+  "#6ec19f",
+  "#46ae85",
+  "#2d9f74",
+  "#1d8c65",
+  "#12795b",
+  "#0a674c",
+  "#00543d",
+];
+
+// Dark mode: a deep green-grey instead of Mantine's neutral greys, so it feels of a piece
+// with the jade accent. dark[7] is the page, dark[6] cards and fields, dark[4] borders.
+const dark: MantineColorsTuple = [
+  "#e4ece7",
+  "#bccac2",
+  "#93a39b",
+  "#6c7d75",
+  "#3b4b44",
+  "#2e3d36",
+  "#1d2924",
+  "#15201b",
+  "#111a16",
+  "#0c1310",
+];
+
+// Amber for "close to a limit", one shade family for bars and text. Replaces Mantine's
+// yellow, which reads as a bright highlighter rather than a caution.
+const amber: MantineColorsTuple = [
+  "#fdf6e7",
+  "#f8e9c4",
+  "#f1d494",
+  "#e9be62",
+  "#e2aa3a",
+  "#d99d24",
+  "#c98c17",
+  "#b7791f",
+  "#9a6413",
+  "#7c4f0a",
+];
+
 const baseTheme = createTheme({
-  primaryColor: "violet",
-  primaryShade: { light: 6, dark: 5 },
-  fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  headings: { fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: "750" },
+  primaryColor: "teal",
+  // dark mode uses a deeper jade than you'd expect so white text on buttons stays readable
+  primaryShade: { light: 7, dark: 6 },
+  // Onest for reading and forms; Bricolage Grotesque for amounts and page titles, where
+  // the numbers are the point
+  fontFamily: "'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  headings: {
+    fontFamily: "'Bricolage Grotesque', 'Onest', sans-serif",
+    fontWeight: "700",
+    sizes: {
+      h1: { fontSize: "2.75rem", lineHeight: "1.05" },
+      h2: { fontSize: "1.875rem", lineHeight: "1.15" },
+      h3: { fontSize: "1.375rem", lineHeight: "1.25" },
+      h4: { fontSize: "1.125rem", lineHeight: "1.3" },
+    },
+  },
+  black: "#17201c",
   defaultRadius: "md",
-  colors: { butter },
+  colors: { butter, teal: jade, yellow: amber, dark },
   cursorType: "pointer",
   components: {
-    Card: { defaultProps: { radius: "lg", withBorder: true } },
-    Paper: { defaultProps: { radius: "lg" } },
-    Modal: { defaultProps: { radius: "lg", overlayProps: { blur: 3, backgroundOpacity: 0.35 } } },
-    Button: { defaultProps: { radius: "md" } },
+    // flat: a hairline border separates surfaces, no drop shadows
+    Card: { defaultProps: { radius: "lg", withBorder: true, shadow: "none" } },
+    Paper: { defaultProps: { radius: "lg", shadow: "none" } },
+    Modal: { defaultProps: { radius: "lg", overlayProps: { blur: 2, backgroundOpacity: 0.4 } } },
+    Button: { defaultProps: { radius: "md" }, styles: { root: { fontWeight: 600 } } },
     NavLink: { defaultProps: { variant: "light" }, styles: { root: { borderRadius: "var(--mantine-radius-md)" } } },
-    Badge: { defaultProps: { radius: "sm" } },
+    Badge: { defaultProps: { radius: "sm", variant: "light" }, styles: { root: { textTransform: "none", fontWeight: 600 } } },
     Notification: { defaultProps: { radius: "md" } },
+    Progress: { defaultProps: { radius: "xl" } },
   },
 });
 
@@ -131,17 +192,14 @@ export const useAppearance = () => {
   return ctx;
 };
 
-// Props for primary call-to-action buttons: the violet-pink gradient in Light/Dark,
-// solid pink in A mode (no gradients there).
+// Props for primary call-to-action buttons: solid jade, or solid pink in A mode.
 // eslint-disable-next-line react-refresh/only-export-components
 export const ctaProps = (appearance: Appearance) =>
-  appearance === "a"
-    ? ({ variant: "filled", color: "pink" } as const)
-    : ({ variant: "gradient", gradient: { from: "violet", to: "pink", deg: 120 } } as const);
+  appearance === "a" ? ({ variant: "filled", color: "pink" } as const) : ({ variant: "filled" } as const);
 
 // Colors for celebrations, matching the current appearance.
 // eslint-disable-next-line react-refresh/only-export-components
 export const confettiColors = (appearance: Appearance) =>
   appearance === "a"
     ? ["#f06595", "#faa2c1", "#ffe066", "#fff1b8", "#ffffff"]
-    : ["#7950f2", "#f06595", "#20c997", "#fcc419", "#4dabf7"];
+    : ["#12795b", "#46ae85", "#9fd6bf", "#e8b04b", "#ffffff"];

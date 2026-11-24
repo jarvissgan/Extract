@@ -1,25 +1,20 @@
 import type { ReactNode } from "react";
-import { Card, Group, Text, ThemeIcon } from "@mantine/core";
+import { Card, Text } from "@mantine/core";
 
 interface Props {
   label: string;
+  // kept for existing callers; the cards no longer show decorative icons
   icon?: ReactNode;
   color?: string;
   children: ReactNode;
 }
 
-const StatCard = ({ label, icon, color, children }: Props) => (
-  <Card padding="lg" shadow="xs" className="lift" h="100%">
-    <Group justify="space-between" align="flex-start" mb="sm" wrap="nowrap">
-      <Text size="xs" c="dimmed" tt="uppercase" fw={700} lts={0.4} style={{ minWidth: 0 }}>
-        {label}
-      </Text>
-      {icon && (
-        <ThemeIcon variant="light" color={color} radius="md" size="lg" visibleFrom="xs">
-          {icon}
-        </ThemeIcon>
-      )}
-    </Group>
+// A quiet labelled panel: a small sentence-case label, then the content.
+const StatCard = ({ label, children }: Props) => (
+  <Card padding="lg" h="100%">
+    <Text size="sm" c="dimmed" fw={500} mb={6}>
+      {label}
+    </Text>
     {children}
   </Card>
 );

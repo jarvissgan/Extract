@@ -17,7 +17,7 @@ test("seeded user sees their dashboard and can open a transaction with the keybo
 
   await expect(page).toHaveURL(/\/home\/\w+/);
   await expect(page.getByRole("heading", { name: "Hello, Dev" })).toBeVisible();
-  await expect(page.getByText("Budget remaining")).toBeVisible();
+  await expect(page.getByText("Left to spend")).toBeVisible();
   await expect(page.locator("tbody tr").first()).toBeVisible();
 
   // keyboard: focus the first transaction link and press Enter
@@ -48,7 +48,7 @@ test("a new user can sign up, add a repeating transaction and see it in their cu
 
   await expect(page.getByRole("link", { name: "Gym membership" })).toBeVisible();
   await expect(page.getByText("SGD 45.00").or(page.getByText("S$45.00")).first()).toBeVisible();
-  await expect(page.getByText("of SGD 800.00").or(page.getByText("of S$800.00"))).toBeVisible();
+  await expect(page.getByText("of your SGD 800.00 budget").or(page.getByText("of your S$800.00 budget"))).toBeVisible();
 
   await page.getByText("Settings", { exact: true }).click();
   const recurring = page.getByRole("row", { name: /Gym membership/ });
@@ -198,7 +198,7 @@ test("income shows on the dashboard, with net and budget alerts, and in reports"
   await addTransaction(page, "Groceries", "90");
 
   await expect(page.getByText("+$3,000.00").first()).toBeVisible();
-  await expect(page.getByText("Net +$2,910.00")).toBeVisible();
+  await expect(page.getByText("+$2,910.00")).toBeVisible(); // net
   await expect(page.getByText("Close to your budget")).toBeVisible();
 
   await addTransaction(page, "Dinner", "20");

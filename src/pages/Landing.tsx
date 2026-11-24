@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Badge, Box, Button, Card, Checkbox, Container, Group, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
+import { Box, Button, Card, Checkbox, Container, Group, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
 import { IconChartPie, IconPigMoney, IconReceipt, IconTargetArrow } from "@tabler/icons-react";
 import { ctaProps, useAppearance } from "../theme/Appearance";
 import { PoohBear } from "../components/Pooh";
@@ -45,18 +45,12 @@ const Landing = () => {
       <Stack gap="xl">
         <Group justify="space-between" align="center" wrap="nowrap" gap="xl">
         <Stack gap="sm" maw={620}>
-          <Badge variant="light" size="lg" w="fit-content">
-            Personal finance, simplified
-          </Badge>
-          <Title order={1} fz={{ base: 40, md: 58 }} lh={1.05} lts={-1}>
-            Effortless{" "}
-            <Text span inherit className="brand-text">
-              expense tracking
-            </Text>
+          <Title order={1} fz={{ base: 40, md: 60 }} lh={1.02} lts={-1.5}>
+            Know what&apos;s left to spend, any day of the month.
           </Title>
-          <Text size="lg" c="dimmed">
-            Extract keeps track of what you spend each month, so you always know where your money
-            went and how much budget you have left.
+          <Text size="lg" c="dimmed" maw={520}>
+            Add what you spend in a few taps or import your bank statements. Extract shows how much of
+            your budget is left and whether you&apos;re on pace.
           </Text>
           <Group mt="md">
             {isAuthenticated ? (
@@ -87,7 +81,7 @@ const Landing = () => {
 
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg" mt="xl">
           {FEATURES.map(({ icon: Icon, title, text }) => (
-            <Card key={title} padding="lg" shadow="xs" className="lift">
+            <Card key={title} padding="lg">
               <ThemeIcon size={44} radius="md" variant="light" mb="sm">
                 <Icon size={24} stroke={1.6} />
               </ThemeIcon>

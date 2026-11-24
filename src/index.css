@@ -11,28 +11,29 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Cards that lift slightly on hover */
-.lift {
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease;
-}
-.lift:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--mantine-shadow-md);
-}
-
-/* Big numbers line up nicely */
-.tabular {
+/* amounts line up in lists and tables */
+.tabular,
+.mantine-Table-td,
+.mantine-NumberInput-input {
   font-variant-numeric: tabular-nums;
 }
 
-/* Brand gradient text */
+/* amounts set in the display face (Bricolage Grotesque), tightly spaced */
+.amount {
+  font-family: var(--mantine-font-family-headings);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
 .brand-text {
-  background: linear-gradient(120deg, var(--mantine-color-violet-5), var(--mantine-color-pink-5));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--mantine-primary-color-filled);
 }
 
 /* ---------- A mode: butter yellow and pink ---------- */
@@ -89,10 +90,28 @@ body {
   }
 }
 
-/* ---------- Light mode: soft background so cards stand out ---------- */
+/* ---------- Light mode: sage-grey page so white surfaces stand out ---------- */
 [data-appearance="light"] body,
 [data-appearance="light"] .mantine-AppShell-main {
-  background: #f7f7fb;
+  background: #f3f5f2;
+}
+:root[data-appearance="light"] {
+  --mantine-color-default-border: #dde3df;
+  --mantine-color-dimmed: #5e6b65;
+  --mantine-color-text: #17201c;
+}
+[data-appearance="light"] .mantine-AppShell-header,
+[data-appearance="light"] .mantine-AppShell-navbar,
+[data-appearance="light"] .mantine-AppShell-footer {
+  background: #ffffff;
+  border-color: #dde3df;
+}
+
+/* ---------- Dark mode ---------- */
+[data-appearance="dark"] .mantine-AppShell-header,
+[data-appearance="dark"] .mantine-AppShell-navbar,
+[data-appearance="dark"] .mantine-AppShell-footer {
+  background: #111a16;
 }
 
 /* ---------- Phones ---------- */

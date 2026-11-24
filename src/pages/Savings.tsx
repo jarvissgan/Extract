@@ -382,7 +382,7 @@ const GoalCard = ({
   const paceText = !reached ? pace(goal, formatMoney) : null;
 
   return (
-    <Card padding="lg" shadow="xs" className="lift" aria-label={`Savings goal ${goal.name}`}>
+    <Card padding="lg" aria-label={`Savings goal ${goal.name}`}>
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
           <ThemeIcon variant="light" color={goal.color} size={44} radius="md">

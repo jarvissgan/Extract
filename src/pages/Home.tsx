@@ -1,51 +1,43 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import {
-  Alert,
-  Box,
-  Center,
-  Group,
-  Loader,
-  Progress,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { DonutChart } from "@mantine/charts";
-import {
-  IconAlertTriangle,
-  IconArrowDownRight,
-  IconArrowUpRight,
-  IconChartDonut,
-  IconReceipt2,
-  IconTarget,
-  IconWallet,
-} from "@tabler/icons-react";
+import { Card, Center, Group, Loader, SimpleGrid, Stack, Text } from "@mantine/core";
+import { IconArrowDownRight, IconArrowUpRight } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import BudgetPace from "../components/BudgetPace";
+import CategoryBreakdown from "../components/CategoryBreakdown";
 import MonthHeader from "../components/MonthHeader";
 import QuickAddBar from "../components/QuickAddBar";
-import StatCard from "../components/StatCard";
 import TransactionTable from "../components/TransactionTable";
 import { useCurrentUser } from "../context/UserContext";
-import { useIsMobile } from "../hooks/useIsMobile";
 import { useMonthTransactions, useSelectedMonth } from "../hooks/useMonthTransactions";
 import { expensesOf, findCategory, sumAmounts } from "../lib/transactions";
 
-const progressColor = (percent: number) => (percent >= 100 ? "red" : percent >= 80 ? "yellow" : "teal");
+// One figure in the totals row under the budget.
+const Figure = ({ label, value, color, note }: { label: string; value: string; color?: string; note?: React.ReactNode }) => (
+  <Stack gap={4}>
+    <Text size="sm" c="dimmed" fw={500}>
+      {label}
+    </Text>
+    <Text className="amount" fz={{ base: 22, sm: 28 }} fw={700} c={color}>
+      {value}
+    </Text>
+    {note}
+  </Stack>
+);
 
+// Home: the budget answer first, then adding a transaction, the month's totals, where the
+// money went, and the transactions themselves.
 const Home = () => {
   const { user: authUser } = useAuth0();
-  const { user, monthlyBudget, categoryBudgets, categories, formatMoney } = useCurrentUser();
+  const { user, categoryBudgets, categories, formatMoney } = useCurrentUser();
   // the name chosen in setup or Settings; the login's name only until the account exists
   const firstName = user?.username?.trim().split(/\s+/)[0] || authUser?.given_name || authUser?.name || "there";
   const { month, setMonth } = useSelectedMonth();
   const { transactions, spent, income, loading, error } = useMonthTransactions(month);
   const previous = useMonthTransactions(month.subtract(1, "month"));
-  const isMobile = useIsMobile();
 
   const isCurrentMonth = month.isSame(dayjs(), "month");
-  const monthName = month.format("MMMM YYYY");
   const expenses = expensesOf(transactions);
+  const net = income - spent;
 
   // compare with the same point in the previous month when looking at the current month
   const dayOfMonth = isCurrentMonth ? dayjs().date() : month.daysInMonth();
@@ -54,146 +46,53 @@ const Home = () => {
   );
   const change = previousSoFar > 0 ? ((spent - previousSoFar) / previousSoFar) * 100 : null;
 
-  const byCategory = categories
-    .map((c) => ({
-      name: c.label,
-      color: c.color,
-      value: sumAmounts(expenses.filter((t) => t.category === c.value)),
-    }))
-    .filter((c) => c.value > 0);
-
-  const remaining = monthlyBudget !== null ? monthlyBudget - spent : null;
-  const usedPercent = monthlyBudget && monthlyBudget > 0 ? (spent / monthlyBudget) * 100 : 0;
-  const daysLeft = month.daysInMonth() - dayjs().date();
-
-  const categoryProgress = Object.entries(categoryBudgets)
-    .filter(([, budget]) => budget > 0)
-    .map(([key, budget]) => {
-      const used = sumAmounts(expenses.filter((t) => t.category === key));
-      return { key, label: findCategory(categories, key).label, budget, used, percent: (used / budget) * 100 };
-    })
-    .sort((a, b) => b.percent - a.percent);
-  const overCategories = categoryProgress.filter((c) => c.percent >= 100);
+  const overCategories = Object.entries(categoryBudgets)
+    .filter(([key, budget]) => budget > 0 && sumAmounts(expenses.filter((t) => t.category === key)) >= budget)
+    .map(([key]) => findCategory(categories, key).label);
 
   return (
-    <Stack p={{ base: "md", md: "xl" }} gap="lg">
+    <Stack p={{ base: "md", md: "xl" }} gap="lg" maw={1180}>
       <MonthHeader title={`Hello, ${firstName}`} month={month} onMonthChange={setMonth} />
-      <QuickAddBar />
 
       {loading ? (
         <Center py="xl">
           <Loader />
         </Center>
       ) : error ? (
-        <Text c="red">Unable to load transactions. Please try again later.</Text>
+        <Text c="red">Couldn&apos;t load your transactions. Check your connection and refresh the page.</Text>
       ) : (
         <>
-          {isCurrentMonth && monthlyBudget !== null && usedPercent >= 80 && (
-            <Alert
-              color={usedPercent >= 100 ? "red" : "yellow"}
-              icon={<IconAlertTriangle size={18} />}
-              title={usedPercent >= 100 ? "Over budget" : "Close to your budget"}
-            >
-              {usedPercent >= 100
-                ? `You've spent ${formatMoney(spent - monthlyBudget)} more than your ${formatMoney(monthlyBudget)} budget this month.`
-                : `You've used ${Math.round(usedPercent)}% of your budget with ${daysLeft} day${daysLeft === 1 ? "" : "s"} left.`}
-              {overCategories.length > 0 &&
-                ` Over budget in: ${overCategories.map((c) => c.label).join(", ")}.`}
-            </Alert>
-          )}
+          <BudgetPace month={month} spent={spent} overCategories={overCategories} />
+          <QuickAddBar />
 
-          {/* phones: the two money totals side by side, wider cards below */}
-          <SimpleGrid cols={{ base: 2, lg: 4 }} spacing={{ base: "sm", sm: "lg" }}>
-            <StatCard label={`Spent in ${monthName}`} icon={<IconReceipt2 size={20} />}>
-              <Title order={2} fz={{ base: "h3", sm: "h2" }} className="tabular">{formatMoney(spent)}</Title>
-              {change !== null ? (
-                <Group gap={4} c={change > 0 ? "red" : "teal"}>
-                  {change > 0 ? <IconArrowUpRight size={16} /> : <IconArrowDownRight size={16} />}
-                  <Text size="sm" c="inherit">
-                    {Math.abs(Math.round(change))}% vs {isCurrentMonth && !isMobile ? "this point last month" : "last month"}
-                  </Text>
-                </Group>
-              ) : (
-                <Text size="sm" c="dimmed">
-                  {expenses.length} expense{expenses.length === 1 ? "" : "s"}
-                </Text>
-              )}
-            </StatCard>
-
-            <StatCard label="Income and net" icon={<IconWallet size={20} />} color="teal">
-              <Title order={2} fz={{ base: "h3", sm: "h2" }} c="teal" className="tabular">
-                +{formatMoney(income)}
-              </Title>
-              <Text size="sm" c={income - spent < 0 ? "red" : "dimmed"}>
-                Net {income - spent < 0 ? "" : "+"}
-                {formatMoney(income - spent)}
-              </Text>
-            </StatCard>
-
-            <Box style={{ gridColumn: isMobile ? "span 2" : undefined }}>
-            <StatCard label={isCurrentMonth ? "Budget remaining" : "Budget"} icon={<IconTarget size={20} />} color="orange">
-              {monthlyBudget === null || remaining === null ? (
-                <Text c="dimmed">No monthly budget set.</Text>
-              ) : (
-                <Stack gap="xs">
-                  <Group gap={6} align="baseline">
-                    <Title order={2} c={remaining < 0 ? "red" : undefined}>
-                      {formatMoney(remaining)}
-                    </Title>
-                    <Text size="sm" c="dimmed">
-                      of {formatMoney(monthlyBudget)}
-                    </Text>
-                  </Group>
-                  <Progress value={Math.min(100, usedPercent)} color={progressColor(usedPercent)} aria-label="Budget used" />
-                </Stack>
-              )}
-            </StatCard>
-
-            </Box>
-            <Box style={{ gridColumn: isMobile ? "span 2" : undefined }}>
-            <StatCard label="Spending by category" icon={<IconChartDonut size={20} />} color="grape">
-              {byCategory.length ? (
-                <Group wrap="nowrap" gap="md">
-                  <DonutChart data={byCategory} size={90} thickness={14} withTooltip valueFormatter={formatMoney} />
-                  <Stack gap={2}>
-                    {byCategory.slice(0, 4).map((c) => (
-                      <Text key={c.name} size="xs">
-                        <Text span c={c.color} fw={700}>
-                          ●
-                        </Text>{" "}
-                        {c.name}: {formatMoney(c.value)}
-                      </Text>
-                    ))}
-                  </Stack>
-                </Group>
-              ) : (
-                <Text c="dimmed">Nothing spent yet.</Text>
-              )}
-            </StatCard>
-            </Box>
-          </SimpleGrid>
-
-          {categoryProgress.length > 0 && (
-            <StatCard label="Category budgets">
-              <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md" verticalSpacing="sm">
-                {categoryProgress.map((c) => (
-                  <Stack key={c.key} gap={4}>
-                    <Group justify="space-between" gap="xs">
-                      <Text size="sm" fw={500}>
-                        {c.label}
-                      </Text>
-                      <Text size="sm" c={c.percent >= 100 ? "red" : "dimmed"}>
-                        {formatMoney(c.used)} / {formatMoney(c.budget)}
+          <Card padding="lg">
+            <SimpleGrid cols={3} spacing={{ base: "sm", sm: "xl" }}>
+              <Figure
+                label="Spent"
+                value={formatMoney(spent)}
+                note={
+                  change !== null ? (
+                    <Group gap={2} c={change > 0 ? "red" : "teal"} wrap="nowrap">
+                      {change > 0 ? <IconArrowUpRight size={14} /> : <IconArrowDownRight size={14} />}
+                      <Text size="xs" c="inherit">
+                        {Math.abs(Math.round(change))}% vs last month
                       </Text>
                     </Group>
-                    <Progress value={Math.min(100, c.percent)} color={progressColor(c.percent)} aria-label={`${c.label} budget used`} />
-                  </Stack>
-                ))}
-              </SimpleGrid>
-            </StatCard>
-          )}
+                  ) : (
+                    <Text size="xs" c="dimmed">
+                      {expenses.length} expense{expenses.length === 1 ? "" : "s"}
+                    </Text>
+                  )
+                }
+              />
+              <Figure label="Income" value={`+${formatMoney(income)}`} color="teal" />
+              <Figure label="Net" value={`${net < 0 ? "" : "+"}${formatMoney(net)}`} color={net < 0 ? "red" : undefined} />
+            </SimpleGrid>
+          </Card>
 
-          <TransactionTable transactions={transactions} emptyText={`No transactions for ${monthName}.`} />
+          <CategoryBreakdown transactions={transactions} />
+
+          <TransactionTable transactions={transactions} emptyText={`No transactions in ${month.format("MMMM YYYY")} yet.`} />
         </>
       )}
     </Stack>
