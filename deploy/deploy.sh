@@ -57,6 +57,15 @@ prune_images() {
     done
   fi
   docker image prune -f >/dev/null
+  # build cache from manual deploys (the pipeline builds on GitHub, not here)
+  docker builder prune -f --filter "until=168h" >/dev/null 2>&1 || true
+}
+
+# One line for the deploy log; the Deploy workflow copies it into its summary.
+report_backup_status() {
+  local status
+  status="$(cat "$BACKUP_STATUS_FILE" 2>/dev/null || echo "not checked yet: runs nightly at 04:07, or now with sudo ./deploy/backup.sh --check")"
+  echo "BACKUP-STATUS: $status"
 }
 
 if [ "$rollback" = "1" ]; then
@@ -67,6 +76,7 @@ if [ "$rollback" = "1" ]; then
   echo "$previous" >"$DEPLOY_DIR/.previous-image"
   start_image "$target" || { docker logs --tail 50 extract-app || true; die "The previous version didn't become healthy either. Logs are above."; }
   echo "Rolled back to $target."
+  report_backup_status
   exit 0
 fi
 
@@ -116,5 +126,7 @@ else
 fi
 
 prune_images
+install_backup_cron
 echo "Deployed $after."
+report_backup_status
 exit 0

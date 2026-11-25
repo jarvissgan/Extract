@@ -37,3 +37,5 @@ deploy/.env
 # which app image is running (set by deploy.sh)
 deploy/.image
 deploy/.previous-image
+# result of the last backup check (set by backup.sh --check)
+deploy/.backup-status

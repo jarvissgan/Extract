@@ -52,3 +52,20 @@ confirm() {
   read -r -p "$1 Type '$2' to continue: " answer
   [ "$answer" = "$2" ] || die "Cancelled."
 }
+
+# Result of the last `backup.sh --check` (written by it, shown after every deploy).
+# shellcheck disable=SC2034 # used by the scripts that source this file
+BACKUP_STATUS_FILE="$DEPLOY_DIR/.backup-status"
+
+# Nightly backup at 03:37 and its check at 04:07 (server time), staggered after other apps
+# on a shared server. Rewritten by setup.sh and every deploy, so existing servers pick up
+# changes to the schedule without re-running setup.
+install_backup_cron() {
+  [ -d /etc/cron.d ] || return 0
+  cat >/etc/cron.d/extract-backup <<CRON
+# Extract: nightly encrypted database backup, then a check that it can be restored
+37 3 * * * root $DEPLOY_DIR/backup.sh >> /var/log/extract-backup.log 2>&1
+7 4 * * * root $DEPLOY_DIR/backup.sh --check >> /var/log/extract-backup.log 2>&1
+CRON
+  chmod 644 /etc/cron.d/extract-backup
+}

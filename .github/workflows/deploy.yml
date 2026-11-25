@@ -57,6 +57,8 @@ jobs:
         id: image
         run: |
           echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          repo="${GITHUB_REPOSITORY#*/}"
+          echo "package=${repo,,}" >> "$GITHUB_OUTPUT"
           echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
@@ -102,13 +104,36 @@ jobs:
           # lets the server download the image; it expires when this job ends
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -o pipefail
           install -m 700 -d ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           printf '%s\n' "$REGISTRY_TOKEN" | ssh -i ~/.ssh/deploy_key -p "$PORT" \
             -o StrictHostKeyChecking=yes -o HostKeyAlias="$HOST" -o BatchMode=yes \
-            "$USER@$HOST" "deploy $IMAGE ${{ github.actor }}"
+            "$USER@$HOST" "deploy $IMAGE ${{ github.actor }}" | tee "$RUNNER_TEMP/deploy.log"
 
       - name: Summary
         if: steps.ready.outputs.ok == 'true'
-        run: echo "Deployed \`${SHA::7}\` to https://${{ vars.APP_DOMAIN }}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Deployed \`${SHA::7}\` to https://${{ vars.APP_DOMAIN }}" >> "$GITHUB_STEP_SUMMARY"
+          # the server's last nightly backup check (see deploy/backup.sh --check)
+          status="$(sed -n 's/^BACKUP-STATUS: //p' "$RUNNER_TEMP/deploy.log" | tail -n 1)"
+          [ -n "$status" ] || status="unknown: the server did not report the backup check"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Backups:** $status" >> "$GITHUB_STEP_SUMMARY"
+          case "$status" in
+            ok*) ;;
+            *) echo "::warning title=Backups::$status" ;;
+          esac
+
+      # Every deploy pushes a new image; private registry storage is limited, so keep the 10
+      # newest (plenty to redeploy a recent commit; the server keeps its own previous image for
+      # rollback). Never fails the deploy: if GitHub refuses, it's a warning (see deploy/README.md).
+      - name: Remove old images from the registry
+        if: steps.ready.outputs.ok == 'true'
+        continue-on-error: true
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ steps.image.outputs.package }}
+          package-type: container
+          min-versions-to-keep: 10

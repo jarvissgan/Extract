@@ -64,7 +64,7 @@ If the repository is private, clone with a read-only **deploy key** instead: run
 1. installs Docker, restic, a firewall (only SSH, HTTP and HTTPS open) and automatic security updates,
 2. asks for your domain and Auth0 settings,
 3. **generates all passwords** and stores them in `deploy/.env` (readable by root only),
-4. starts Caddy and the app, and sets up nightly backups at 03:37.
+4. starts Caddy and the app, and sets up nightly backups at 03:37 with a restore check at 04:07.
 
 ### 5. Save the secrets
 At the end, setup prints three passwords **once**. Put them in your password manager now. Without the **backup encryption password**, backups can't be restored.
@@ -107,6 +107,7 @@ Missing columns and tables are added automatically when the app restarts. Existi
 | Go back to the previous version | `sudo ./deploy/deploy.sh --rollback` |
 | Back up now | `sudo ./deploy/backup.sh` |
 | List backups | `sudo ./deploy/backup.sh --list` |
+| Check the latest backup is recent and restorable | `sudo ./deploy/backup.sh --check` (runs nightly; the last result shows after every deploy and in the Deploy summary on GitHub) |
 | Restore the latest backup | `sudo ./deploy/restore.sh` |
 | Restore a specific backup | `sudo ./deploy/restore.sh <id from --list>` |
 | Change the database password | `sudo ./deploy/rotate-db-password.sh` |
@@ -148,6 +149,15 @@ Until the secrets exist the Deploy workflow just skips, so it's safe to have it 
 - **Rollback:** `sudo ./deploy/deploy.sh --rollback` on the server switches to the previous image
   (the server keeps the current and previous ones). To redeploy any older commit, run the
   Deploy workflow from that commit, or revert on `master`.
+- **Old images are cleaned up:** after each successful deploy the workflow keeps the 10 newest
+  images in GitHub's registry and deletes the rest; the server keeps the running and previous
+  image and clears week-old build cache. If the registry step shows a warning, GitHub didn't let
+  the workflow delete them: on GitHub, open your profile's **Packages → extract → Package settings
+  → Manage Actions access**, and give the Extract repository the **Admin** role.
+- **Backups are checked:** every night after the backup, `backup.sh --check` confirms the newest
+  backup is under 26 hours old, restores it to a temporary folder to make sure it's a complete
+  database dump, and verifies a sample of the encrypted repository. Each deploy reports the last
+  result, and the Deploy summary on GitHub shows a warning when it failed.
 - **Registry access:** the image is private (the repo is private). The server logs in with the
   workflow's own token, which expires when the job ends, so no registry password is stored.
 - **Manual deploys still work:** `sudo ./deploy/deploy.sh` builds on the server as before.

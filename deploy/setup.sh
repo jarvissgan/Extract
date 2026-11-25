@@ -119,13 +119,7 @@ wait_healthy
 say "Setting up nightly backups"
 mkdir -p "$(dirname "${RESTIC_REPOSITORY:-/var/backups/extract}")"
 "$DEPLOY_DIR/backup.sh"
-if [ -d /etc/cron.d ]; then
-  cat >/etc/cron.d/extract-backup <<CRON
-# Nightly encrypted database backup for Extract (03:37 server time, after the other apps on a shared server)
-37 3 * * * root $DEPLOY_DIR/backup.sh >> /var/log/extract-backup.log 2>&1
-CRON
-  chmod 644 /etc/cron.d/extract-backup
-fi
+install_backup_cron
 
 # ---------- done ----------
 say "Extract is running"
